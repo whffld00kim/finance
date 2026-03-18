@@ -177,8 +177,6 @@
                 <th style="width:70px">소유자</th>
                 <th style="width:140px">적립금 (원)</th>
                 <th style="width:80px">적립금 (만원)</th>
-                <th style="width:80px">가입일</th>
-                <th style="width:80px">만기일</th>
                 <th style="width:40px">삭제</th>
               </tr>
             </thead>
@@ -363,16 +361,6 @@
           <label class="form-label fw-semibold">적립금 (원) <span class="text-danger">*</span></label>
           <input type="number" class="form-control input-amount" id="inp-amount" placeholder="0">
           <div class="form-text" id="amountPreview"></div>
-        </div>
-        <div class="row">
-          <div class="col-6">
-            <label class="form-label fw-semibold">가입일</label>
-            <input type="text" class="form-control" id="inp-joindate" placeholder="YY.MM.DD">
-          </div>
-          <div class="col-6">
-            <label class="form-label fw-semibold">만기일</label>
-            <input type="text" class="form-control" id="inp-maturity" placeholder="YY.MM.DD">
-          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -654,14 +642,6 @@ function renderEntryTable() {
               onchange="updateField('${e.id}','amount',this.value)">
           </td>
           <td class="text-end manwon-cell" id="mw-${e.id}">${amStr}</td>
-          <td class="text-center">
-            <input type="text" class="cell-input" style="text-align:center;width:72px" value="${e.joinDate || ''}" placeholder="-"
-              onchange="updateField('${e.id}','joinDate',this.value)">
-          </td>
-          <td class="text-center">
-            <input type="text" class="cell-input" style="text-align:center;width:72px" value="${e.maturity || ''}" placeholder="-"
-              onchange="updateField('${e.id}','maturity',this.value)">
-          </td>
           <td class="text-center">
             <button class="delete-btn" onclick="deleteEntry('${e.id}')" title="삭제">✕</button>
           </td>
@@ -1150,8 +1130,6 @@ function showAddModal() {
   document.getElementById('inp-item').value = '';
   document.getElementById('inp-owner').value = '';
   document.getElementById('inp-amount').value = '';
-  document.getElementById('inp-joindate').value = '';
-  document.getElementById('inp-maturity').value = '';
   updateAmountPreview();
   addModal.show();
 }
@@ -1174,8 +1152,6 @@ function saveEntry() {
     item: document.getElementById('inp-item').value.trim(),
     owner: document.getElementById('inp-owner').value.trim(),
     amount: parseFloat(document.getElementById('inp-amount').value) || 0,
-    joinDate: document.getElementById('inp-joindate').value.trim(),
-    maturity: document.getElementById('inp-maturity').value.trim(),
   };
 
   if (!entry.date || !entry.category || entry.amount <= 0) {
