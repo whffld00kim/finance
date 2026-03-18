@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>재무현황 관리</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  :root {
+    --primary: #1a3c6e;
+    --accent: #2563eb;
+    --light-bg: #f0f4f8;
+    --card-bg: #ffffff;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --warning: #d97706;
+  }
+  body { background: var(--light-bg); font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; font-size: 0.88rem; }
+  .navbar-brand { font-size: 1.15rem; font-weight: 700; }
+  .nav-tabs .nav-link { color: #555; font-weight: 500; }
+  .nav-tabs .nav-link.active { color: var(--primary); font-weight: 700; border-bottom: 3px solid var(--accent); }
+  .section-card { background: var(--card-bg); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.5rem; margin-bottom: 1rem; }
+  .section-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; border-left: 4px solid var(--accent); padding-left: 0.6rem; }
+  table { font-size: 0.83rem; }
+  th { background: #1a3c6e; color: #fff; text-align: center; white-space: nowrap; vertical-align: middle; }
+  td { vertical-align: middle; }
+  .table-summary th { background: #2563eb; }
+  .amount-input { width: 130px; text-align: right; }
+  .btn-calc { background: var(--primary); color: #fff; font-weight: 700; padding: 0.5rem 2rem; font-size: 0.95rem; }
+  .btn-calc:hover { background: var(--accent); color: #fff; }
+  .summary-row-total { background: #e8f0fe; font-weight: 700; }
+  /* 총자산 / 가용자산 강조 열 */
+  .col-total {
+    background: #1e3a8a !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    font-size: 0.92rem;
+    letter-spacing: -0.01em;
+    border-left: 2px solid #fff !important;
+  }
+  .col-avail {
+    background: #2563eb !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    border-right: 2px solid #93c5fd !important;
+  }
+  .positive { color: var(--success); }
+  .negative { color: var(--danger); }
+  .badge-category { font-size: 0.78rem; padding: 0.2em 0.6em; border-radius: 4px; }
+  .cat-부동산 { background: #dbeafe; color: #1e40af; }
+  .cat-부채 { background: #fee2e2; color: #991b1b; }
+  .cat-연금 { background: #d1fae5; color: #065f46; }
+  .cat-유동자산 { background: #fef3c7; color: #92400e; }
+  .cat-퇴직금 { background: #ede9fe; color: #4c1d95; }
+  .input-amount { color: #dc2626; font-weight: 600; }
+  .summary-table td, .summary-table th { padding: 0.45rem 0.6rem; text-align: right; }
+  .summary-table th:first-child, .summary-table td:first-child { text-align: center; }
+  .chart-container { position: relative; height: 320px; }
+  .metric-card { background: #fff; border-radius: 8px; padding: 1rem 1.2rem; box-shadow: 0 1px 4px rgba(0,0,0,0.07); text-align: center; }
+  .metric-label { font-size: 0.78rem; color: #666; margin-bottom: 0.2rem; }
+  .metric-value { font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+  .metric-change { font-size: 0.78rem; margin-top: 0.2rem; }
+  .delete-btn { color: #dc2626; cursor: pointer; border: none; background: none; }
+  .delete-btn:hover { color: #991b1b; }
+  .row-highlight { background: #fffbeb; }
+  select.form-select, input.form-control { font-size: 0.83rem; }
+  /* Inline editing */
+  .cell-input {
+    border: none; background: transparent; width: 100%; font-size: 0.83rem;
+    font-family: inherit; padding: 0; outline: none; color: inherit;
+  }
+  .cell-input:focus {
+    background: #fff; border: 1px solid var(--accent);
+    border-radius: 3px; padding: 1px 4px; box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+  }
+  .cell-input.amount-field { text-align: right; color: #dc2626; font-weight: 600; }
+  .cell-select {
+    border: none; background: transparent; width: 100%; font-size: 0.83rem;
+    font-family: inherit; padding: 0; outline: none; cursor: pointer;
+  }
+  .cell-select:focus {
+    background: #fff; border: 1px solid var(--accent);
+    border-radius: 3px; box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+  }
+  td:has(.cell-input:focus), td:has(.cell-select:focus) { background: #f0f7ff !important; }
+  .manwon-cell { color: #555; font-size: 0.8rem; }
+  /* Stock tab */
+  .cat-국내주식 { background: #dbeafe; color: #1e40af; }
+  .cat-해외주식 { background: #d1fae5; color: #065f46; }
+  .cat-ETF { background: #fef3c7; color: #92400e; }
+  .cat-채권 { background: #ede9fe; color: #4c1d95; }
+  .cat-기타 { background: #f3f4f6; color: #374151; }
+  .stock-summary-table td, .stock-summary-table th { padding: 0.4rem 0.7rem; }
+  .stock-total-row { background: #e8f0fe; font-weight: 700; }
+  /* 주식 보유현황 스크롤 테이블 */
+  .stock-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 380px; border: 1px solid #dee2e6; border-radius: 4px; }
+  #stockTable { margin-bottom: 0; }
+  #stockTable thead th { position: sticky; top: 0; background: #f8fafc; z-index: 2; border-bottom: 2px solid #dee2e6; }
+  /* 정렬 헤더 */
+  .sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
+  .sort-th:hover { background: #e8f0fe !important; }
+  .sort-arrow { display: inline-block; width: 14px; font-size: 0.7rem; color: #9ca3af; }
+  .sort-arrow.asc { color: var(--accent); }
+  .sort-arrow.desc { color: var(--accent); }
+  /* 필터바 */
+  .stock-filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .stock-filter-bar .form-control-sm { font-size: 0.82rem; }
+  .stock-filter-bar .badge-count { font-size: 0.75rem; color: #6b7280; white-space: nowrap; }
+
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark" style="background:var(--primary);">
+  <div class="container-fluid flex-wrap gap-2">
+    <span class="navbar-brand">📊 재무현황 관리 시스템</span>
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <span style="font-size:0.78rem;opacity:0.85;" id="sync-status" class="text-white">⏳ 서버 연결 중...</span>
+      <button onclick="exportData()" class="btn btn-sm btn-outline-light py-0" style="font-size:0.75rem;" title="데이터를 JSON 파일로 저장">💾 백업</button>
+      <label class="btn btn-sm btn-outline-light py-0 mb-0" style="font-size:0.75rem;cursor:pointer;" title="JSON 파일을 불러와 서버에 저장">
+        📂 복원<input type="file" accept=".json" onchange="importData(event)" style="display:none">
+      </label>
+      <span class="text-white" style="font-size:0.82rem;" id="currentDateDisplay"></span>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid mt-3 px-4">
+
+  <!-- Metric Cards -->
+  <div class="row g-3 mb-3" id="metricCards">
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">총 자산</div><div class="metric-value" id="m-total">-</div><div class="metric-change" id="m-total-chg"></div></div></div>
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">가용자산 (연금제외)</div><div class="metric-value" id="m-avail">-</div><div class="metric-change" id="m-avail-chg"></div></div></div>
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">총 부채</div><div class="metric-value text-danger" id="m-debt">-</div><div class="metric-change" id="m-debt-chg"></div></div></div>
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">순자산 (연금제외)</div><div class="metric-value" id="m-net">-</div><div class="metric-change" id="m-net-chg"></div></div></div>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-3" id="mainTab">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-input">📝 자산 입력</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-summary">📋 총자산 현황</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-chart">📈 자산 분석</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-stock" onclick="renderStockTab()">📊 주식 현황</button></li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- ===== TAB 1: 자산 입력 ===== -->
+    <div class="tab-pane fade show active" id="tab-input">
+      <div class="section-card">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 gap-2">
+          <div class="section-title mb-0">■ 연도별 자산 세부내역</div>
+          <div class="d-flex flex-wrap gap-1 align-items-center">
+            <select class="form-select form-select-sm" id="yearFilter" style="width:110px;">
+              <option value="all">전체 연도</option>
+              <option value="2026" selected>2026년</option>
+              <option value="2025">2025년</option>
+              <option value="2024">2024년</option>
+              <option value="2023">2023년</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary" onclick="exportFinanceData()">💾 <span class="d-none d-sm-inline">내보내기</span></button>
+            <label class="btn btn-sm btn-outline-secondary mb-0" style="cursor:pointer">📂 <span class="d-none d-sm-inline">가져오기</span><input type="file" accept=".json" style="display:none" onchange="importFinanceData(this.files[0]);this.value=''"></label>
+            <button class="btn btn-sm btn-outline-danger" onclick="clearAllFinanceData()">🗑 <span class="d-none d-sm-inline">전체 삭제</span></button>
+            <button class="btn btn-sm btn-outline-primary" onclick="showAddModal()">+ <span class="d-none d-sm-inline">항목 추가</span></button>
+            <button class="btn btn-sm btn-calc" onclick="recalculate()">🔄 <span class="d-none d-sm-inline">계산</span></button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover" id="entryTable">
+            <thead>
+              <tr>
+                <th style="width:90px">날짜</th>
+                <th style="width:80px">분류</th>
+                <th style="width:120px">항목</th>
+                <th style="width:70px">소유자</th>
+                <th style="width:140px">적립금 (원)</th>
+                <th style="width:80px">적립금 (만원)</th>
+                <th style="width:80px">가입일</th>
+                <th style="width:80px">만기일</th>
+                <th style="width:40px">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="entryTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB 2: 총자산 현황 ===== -->
+    <div class="tab-pane fade" id="tab-summary">
+      <div class="section-card">
+        <div class="section-title">■ 총자산 현황 (단위: 만원)</div>
+        <div class="table-responsive">
+          <table class="table table-bordered summary-table" id="summaryTable">
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>부동산</th>
+                <th>부채</th>
+                <th>연금</th>
+                <th>유동자산</th>
+                <th class="col-total">총자산</th>
+                <th class="col-avail">가용자산<br><small>(연금제외)</small></th>
+                <th>총자산증감</th>
+                <th>부동산증감</th>
+                <th>부채증감</th>
+                <th>연금증감</th>
+                <th>유동자산증감</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Category breakdown -->
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="section-card">
+            <div class="section-title">■ 최근 연도 자산 분류 현황</div>
+            <div id="categoryBreakdown"></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="section-card">
+            <div class="section-title">■ 소유자별 자산 현황</div>
+            <div id="ownerBreakdown"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB 3: 자산 분석 ===== -->
+    <div class="tab-pane fade" id="tab-chart">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="section-card">
+            <div class="section-title">■ 총자산 추이</div>
+            <div class="chart-container"><canvas id="trendChart"></canvas></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="section-card">
+            <div class="section-title">■ 자산 구성 비율 (최근 연도)</div>
+            <div class="chart-container"><canvas id="pieChart"></canvas></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="section-card">
+            <div class="section-title">■ 카테고리별 연도 추이</div>
+            <div class="chart-container"><canvas id="categoryChart"></canvas></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="section-card">
+            <div class="section-title">■ 연도별 자산/부채 현황</div>
+            <div class="chart-container"><canvas id="barChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ===== TAB 4: 주식 현황 ===== -->
+    <div class="tab-pane fade" id="tab-stock">
+      <div class="section-card">
+        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-2 gap-2">
+          <div class="section-title mb-0">■ 주식 보유 현황</div>
+          <div class="d-flex flex-wrap gap-1">
+            <button class="btn btn-sm btn-outline-secondary" onclick="exportStockData()">💾 <span class="d-none d-sm-inline">내보내기</span></button>
+            <label class="btn btn-sm btn-outline-secondary mb-0" style="cursor:pointer">📂 <span class="d-none d-sm-inline">가져오기</span><input type="file" accept=".json" style="display:none" onchange="importStockData(this.files[0]);this.value=''"></label>
+            <button class="btn btn-sm btn-outline-danger" onclick="clearAllStockData()">🗑 <span class="d-none d-sm-inline">전체 삭제</span></button>
+            <button class="btn btn-sm btn-outline-primary" onclick="addStockEntry()">+ <span class="d-none d-sm-inline">항목 추가</span></button>
+          </div>
+        </div>
+        <!-- 필터 바 -->
+        <div class="stock-filter-bar mb-2">
+          <div class="input-group input-group-sm" style="max-width:320px">
+            <span class="input-group-text">🔍</span>
+            <input type="text" id="stockSearchInput" class="form-control form-control-sm"
+              placeholder="소유자, 종목명, 분류 등 검색..."
+              oninput="onStockSearch(this.value)">
+            <button class="btn btn-outline-secondary btn-sm" onclick="clearStockSearch()" title="검색 초기화">✕</button>
+          </div>
+          <span class="badge-count" id="stockRowCount"></span>
+        </div>
+        <div class="stock-table-wrap">
+          <table class="table table-bordered table-hover" id="stockTable">
+            <thead>
+              <tr>
+                <th class="sort-th" style="width:70px"  onclick="sortStockBy('owner')">소유자 <span class="sort-arrow" id="sort-owner"></span></th>
+                <th class="sort-th" style="width:80px"  onclick="sortStockBy('country')">투자국가 <span class="sort-arrow" id="sort-country"></span></th>
+                <th class="sort-th" style="width:90px"  onclick="sortStockBy('category')">분류 <span class="sort-arrow" id="sort-category"></span></th>
+                <th class="sort-th" style="width:100px" onclick="sortStockBy('account')">계좌명 <span class="sort-arrow" id="sort-account"></span></th>
+                <th class="sort-th" style="width:130px" onclick="sortStockBy('stockName')">종목명 <span class="sort-arrow" id="sort-stockName"></span></th>
+                <th class="sort-th" style="width:70px;text-align:right"  onclick="sortStockBy('shares')">주식수 <span class="sort-arrow" id="sort-shares"></span></th>
+                <th class="sort-th" style="width:90px;text-align:right"  onclick="sortStockBy('price')">현재가 (원) <span class="sort-arrow" id="sort-price"></span></th>
+                <th class="sort-th" style="width:110px;text-align:right" onclick="sortStockBy('total')">총금액 (원) <span class="sort-arrow" id="sort-total"></span></th>
+                <th class="sort-th" style="width:80px" onclick="sortStockBy('broker')">증권명 <span class="sort-arrow" id="sort-broker"></span></th>
+                <th style="width:40px">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="stockTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 분류별 합계 -->
+      <div class="section-card">
+        <div class="section-title">■ 분류별 총금액 합계 (단위: 원)</div>
+        <div class="table-responsive">
+          <table class="table table-bordered stock-summary-table" id="stockSummaryTable">
+            <thead>
+              <tr>
+                <th style="width:100px">분류</th>
+                <th style="width:80px">소유자</th>
+                <th style="text-align:right">총금액 (원)</th>
+                <th style="text-align:right">비중 (%)</th>
+                <th style="text-align:right">항목 수</th>
+              </tr>
+            </thead>
+            <tbody id="stockSummaryTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--primary);color:#fff;">
+        <h6 class="modal-title" id="modalTitle">항목 추가</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label fw-semibold">날짜</label>
+          <input type="date" class="form-control" id="inp-date">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold">분류</label>
+          <select class="form-select" id="inp-category">
+            <option value="부동산">부동산</option>
+            <option value="부채">부채</option>
+            <option value="연금">연금</option>
+            <option value="유동자산">유동자산</option>
+            <option value="퇴직금">퇴직금</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold">항목</label>
+          <input type="text" class="form-control" id="inp-item" placeholder="예: 전세금, 전세대출, 개인연금 등">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold">소유자</label>
+          <input type="text" class="form-control" id="inp-owner" placeholder="예: 김민성, 김도연">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-semibold">적립금 (원) <span class="text-danger">*</span></label>
+          <input type="number" class="form-control input-amount" id="inp-amount" placeholder="0">
+          <div class="form-text" id="amountPreview"></div>
+        </div>
+        <div class="row">
+          <div class="col-6">
+            <label class="form-label fw-semibold">가입일</label>
+            <input type="text" class="form-control" id="inp-joindate" placeholder="YY.MM.DD">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">만기일</label>
+            <input type="text" class="form-control" id="inp-maturity" placeholder="YY.MM.DD">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button class="btn btn-primary btn-sm" onclick="saveEntry()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>
+// =====================================================
+// FIREBASE 초기화
+// =====================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCyd8s4Vs2rNsACQQtm8NUAYSFO6wLGWX4",
+  authDomain: "finance-manager-ca4ca.firebaseapp.com",
+  databaseURL: "https://finance-manager-ca4ca-default-rtdb.firebaseio.com",
+  projectId: "finance-manager-ca4ca",
+  storageBucket: "finance-manager-ca4ca.firebasestorage.app",
+  messagingSenderId: "360457300029",
+  appId: "1:360457300029:web:b7066af249ce6427a6a254"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+function ensureArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  return Object.values(val);
+}
+
+// =====================================================
+// DATA STORAGE
+// =====================================================
+const STORAGE_KEY = 'finance_data_v3';
+const STOCK_KEY_LS = 'stock_data_v1';
+
+let _financeData = null;
+let _stockData   = null;
+
+async function initData() {
+  const status = document.getElementById('sync-status');
+  try {
+    const [finSnap, stkSnap] = await Promise.all([
+      db.ref('finance').get(),
+      db.ref('stocks').get(),
+    ]);
+    const fin = finSnap.val();
+    const stk = stkSnap.val();
+    _financeData = fin || JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+                       || { entries: JSON.parse(JSON.stringify(DEFAULT_2026)) };
+    _stockData   = ensureArray(stk) || JSON.parse(localStorage.getItem(STOCK_KEY_LS) || '[]');
+    if (status) { status.textContent = '🟢 Firebase 연결됨'; status.style.color = '#16a34a'; }
+  } catch (e) {
+    console.warn('Firebase 연결 실패 — localStorage 사용:', e.message);
+    _financeData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+                 || { entries: JSON.parse(JSON.stringify(DEFAULT_2026)) };
+    _stockData   = JSON.parse(localStorage.getItem(STOCK_KEY_LS) || '[]');
+    if (status) { status.textContent = '🔴 오프라인 (로컬 저장)'; status.style.color = '#dc2626'; }
+  }
+}
+
+// Historical data (in 만원 - pre-calculated summaries)
+const HISTORICAL = [
+  { date: '2023.01.01', year: 2023, 부동산: 23500, 부채: 4572,    연금: 25331,    유동자산: 2041,     isHistorical: true },
+  { date: '2024.01.01', year: 2024, 부동산: 23500, 부채: 2657.95, 연금: 30873.63, 유동자산: 8467.71,  isHistorical: true },
+  { date: '2025.01.01', year: 2025, 부동산: 24297, 부채: 3230.55, 연금: 36292.60, 유동자산: 20973.91, isHistorical: true },
+];
+
+// Default 2026 raw entries (in 원)
+const DEFAULT_2026 = [
+  { id: 'd1', date: '2026-01-01', category: '퇴직금', item: '퇴직금', owner: '김도연', amount: 128744940, joinDate: '-', maturity: '-' },
+  { id: 'd2', date: '2026-01-01', category: '연금', item: '개인연금', owner: '김도연', amount: 4000000, joinDate: '19.05.24', maturity: '29.05.23' },
+  { id: 'd3', date: '2026-01-01', category: '연금', item: '비과세연금', owner: '김민성', amount: 10500000, joinDate: '', maturity: '' },
+  { id: 'd4', date: '2026-01-01', category: '연금', item: '비과세연금', owner: '김도연', amount: 10500000, joinDate: '', maturity: '' },
+  { id: 'd5', date: '2026-01-01', category: '부동산', item: '전세금', owner: '김민성', amount: 235000000, joinDate: '', maturity: '' },
+  { id: 'd6', date: '2026-01-01', category: '부동산', item: '입금액', owner: '김민성', amount: 186924000, joinDate: '', maturity: '' },
+  { id: 'd7', date: '2026-01-01', category: '부채', item: '전세대출', owner: '김민성', amount: 14884080, joinDate: '', maturity: '' },
+  { id: 'd8', date: '2026-01-01', category: '부채', item: '개인(케이뱅)', owner: '김민성', amount: 71032554, joinDate: '', maturity: '' },
+  { id: 'd9', date: '2026-01-01', category: '부채', item: '중도금대출', owner: '김민성', amount: 100000000, joinDate: '', maturity: '' },
+  { id: 'd10', date: '2026-01-01', category: '부채', item: '개인(새마을)', owner: '김민성', amount: 138831144, joinDate: '', maturity: '' },
+  { id: 'd11', date: '2026-01-01', category: '부채', item: '중도금대출', owner: '김도연', amount: 100000000, joinDate: '', maturity: '' },
+  { id: 'd12', date: '2026-01-01', category: '부채', item: '개인(신한)', owner: '김도연', amount: 149091304, joinDate: '', maturity: '' },
+];
+
+let editingId = null;
+let trendChart = null, pieChart = null, categoryChart = null, barChart = null;
+
+function loadData() {
+  if (!_financeData) {
+    _financeData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+                 || { entries: JSON.parse(JSON.stringify(DEFAULT_2026)) };
+  }
+  return _financeData;
+}
+
+function saveData(data) {
+  _financeData = data;
+  db.ref('finance').set(data).then(() => {
+    const s = document.getElementById('sync-status');
+    if (s) { s.textContent = '🟢 저장됨'; s.style.color = '#16a34a'; }
+  }).catch(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const s = document.getElementById('sync-status');
+    if (s) { s.textContent = '🔴 오프라인 (로컬 저장)'; s.style.color = '#dc2626'; }
+  });
+}
+
+function genId() {
+  return 'e_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+}
+
+// =====================================================
+// CALCULATIONS
+// =====================================================
+function calcYearSummary(entries, year) {
+  const yearStr = year + '-01-01';
+  const filtered = entries.filter(e => e.date === yearStr || e.date.startsWith(year + '-'));
+  const cats = ['부동산', '부채', '유동자산'];
+  const result = {};
+  cats.forEach(c => {
+    result[c] = filtered.filter(e => e.category === c).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0) / 10000;
+  });
+  // 연금 + 퇴직금 합산
+  result.연금 = filtered.filter(e => e.category === '연금' || e.category === '퇴직금')
+                        .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0) / 10000;
+  result.총자산 = result.부동산 + result.연금 + result.유동자산 - result.부채;
+  result.가용연금제외 = result.총자산 - result.연금;
+  return result;
+}
+
+function getAllYearData(entries) {
+  // Collect all years from entries
+  const entryYears = [...new Set(entries.map(e => new Date(e.date).getFullYear()))].sort();
+  const rows = [];
+
+  // Add historical data
+  HISTORICAL.forEach(h => {
+    const r = { ...h };
+    r.총자산 = r.부동산 + r.연금 + r.유동자산 - r.부채;
+    r.가용연금제외 = r.총자산 - r.연금;
+    rows.push(r);
+  });
+
+  // Add entry-based years (only years not already in historical)
+  const historicalYears = HISTORICAL.map(h => h.year);
+  entryYears.forEach(y => {
+    // 해당 연도 항목 중 가장 최신 날짜를 표시 날짜로 사용
+    const yEntries = entries.filter(e => new Date(e.date).getFullYear() === y);
+    const latestDate = yEntries.reduce((max, e) => (e.date > max ? e.date : max), yEntries[0].date);
+    const displayDate = latestDate.replace(/-/g, '.');
+
+    if (!historicalYears.includes(y)) {
+      const calc = calcYearSummary(entries, y);
+      rows.push({ date: displayDate, year: y, ...calc });
+    } else {
+      // Update historical year with entry data if entries exist
+      const idx = rows.findIndex(r => r.year === y);
+      if (idx !== -1 && yEntries.length > 0) {
+        const calc = calcYearSummary(entries, y);
+        rows[idx] = { date: displayDate, year: y, ...calc };
+      }
+    }
+  });
+
+  rows.sort((a, b) => a.year - b.year);
+
+  // Add year-over-year changes
+  rows.forEach((r, i) => {
+    if (i === 0) {
+      r.d총자산 = null; r.d부동산 = null; r.d부채 = null; r.d연금 = null; r.d유동자산 = null;
+    } else {
+      const prev = rows[i - 1];
+      r.d총자산 = r.총자산 - prev.총자산;
+      r.d부동산 = r.부동산 - prev.부동산;
+      r.d부채 = r.부채 - prev.부채;
+      r.d연금 = r.연금 - prev.연금;
+      r.d유동자산 = r.유동자산 - prev.유동자산;
+    }
+  });
+
+  return rows;
+}
+
+// =====================================================
+// FORMATTING
+// =====================================================
+function fmt(v, digits = 0) {
+  if (v === null || v === undefined) return '-';
+  return v.toLocaleString('ko-KR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+}
+
+function fmtChange(v) {
+  if (v === null || v === undefined) return '<span class="text-muted">-</span>';
+  const cls = v > 0 ? 'positive' : (v < 0 ? 'negative' : 'text-muted');
+  const sign = v > 0 ? '+' : '';
+  return `<span class="${cls}">${sign}${fmt(v, 0)}</span>`;
+}
+
+function fmtWon(v) {
+  if (!v) return '-';
+  const n = parseFloat(v);
+  return n.toLocaleString('ko-KR') + ' 원';
+}
+
+function fmtManwon(v) {
+  if (!v) return '-';
+  const n = parseFloat(v) / 10000;
+  return n.toLocaleString('ko-KR', { maximumFractionDigits: 0 }) + ' 만원';
+}
+
+function catBadge(cat) {
+  return `<span class="badge badge-category cat-${cat}">${cat}</span>`;
+}
+
+// =====================================================
+// RENDER: ENTRY TABLE (inline editing)
+// =====================================================
+const CAT_ORDER = { '부동산': 1, '부채': 2, '연금': 3, '유동자산': 4, '퇴직금': 5 };
+const CATEGORIES = ['부동산', '부채', '연금', '유동자산', '퇴직금'];
+
+function catOptions(selected) {
+  return CATEGORIES.map(c => `<option value="${c}" ${c === selected ? 'selected' : ''}>${c}</option>`).join('');
+}
+
+function renderEntryTable() {
+  const data = loadData();
+  const filter = document.getElementById('yearFilter').value;
+  let entries = [...data.entries];
+  if (filter !== 'all') entries = entries.filter(e => e.date.startsWith(filter));
+  entries.sort((a, b) => a.date.localeCompare(b.date) || (CAT_ORDER[a.category] || 9) - (CAT_ORDER[b.category] || 9));
+
+  const tbody = document.getElementById('entryTbody');
+  if (entries.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">데이터가 없습니다. "+ 항목 추가" 버튼으로 추가하세요.</td></tr>';
+    return;
+  }
+
+  const years = [...new Set(entries.map(e => e.date.substring(0, 4)))].sort();
+  let html = '';
+
+  years.forEach(y => {
+    const yEntries = entries.filter(e => e.date.startsWith(y));
+    const cats = [...new Set(yEntries.map(e => e.category))].sort((a, b) => (CAT_ORDER[a] || 9) - (CAT_ORDER[b] || 9));
+
+    cats.forEach(cat => {
+      const cEntries = yEntries.filter(e => e.category === cat);
+
+      cEntries.forEach(e => {
+        const aw = parseFloat(e.amount) || 0;
+        const am = aw / 10000;
+        const amStr = am ? am.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : '-';
+        html += `<tr data-id="${e.id}">
+          <td class="text-center">
+            <input type="date" class="cell-input" style="width:105px;text-align:center"
+              value="${e.date.substring(0,10)}"
+              onchange="updateField('${e.id}','date',this.value)">
+          </td>
+          <td class="text-center" style="min-width:80px">
+            <input class="cell-input" value="${e.category || ''}" onchange="updateField('${e.id}','category',this.value)" placeholder="분류">
+          </td>
+          <td>
+            <input type="text" class="cell-input" value="${e.item || ''}" placeholder="항목명"
+              onchange="updateField('${e.id}','item',this.value)">
+          </td>
+          <td class="text-center">
+            <input type="text" class="cell-input" style="text-align:center" value="${e.owner || ''}" placeholder="소유자"
+              onchange="updateField('${e.id}','owner',this.value)">
+          </td>
+          <td class="text-end">
+            <input type="number" class="cell-input amount-field" id="amt-${e.id}"
+              value="${aw || ''}" placeholder="0"
+              oninput="onAmountInput('${e.id}',this.value)"
+              onchange="updateField('${e.id}','amount',this.value)">
+          </td>
+          <td class="text-end manwon-cell" id="mw-${e.id}">${amStr}</td>
+          <td class="text-center">
+            <input type="text" class="cell-input" style="text-align:center;width:72px" value="${e.joinDate || ''}" placeholder="-"
+              onchange="updateField('${e.id}','joinDate',this.value)">
+          </td>
+          <td class="text-center">
+            <input type="text" class="cell-input" style="text-align:center;width:72px" value="${e.maturity || ''}" placeholder="-"
+              onchange="updateField('${e.id}','maturity',this.value)">
+          </td>
+          <td class="text-center">
+            <button class="delete-btn" onclick="deleteEntry('${e.id}')" title="삭제">✕</button>
+          </td>
+        </tr>`;
+      });
+
+      // Subtotal row
+      const catTotal = cEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+      html += `<tr style="font-weight:600;background:#f8fafc;" class="subtotal-row">
+        <td></td>
+        <td class="text-center"><small>${catBadge(cat)} 소계</small></td>
+        <td colspan="2"></td>
+        <td class="text-end text-primary">${catTotal.toLocaleString('ko-KR')}</td>
+        <td class="text-end text-primary">${(catTotal/10000).toLocaleString('ko-KR',{maximumFractionDigits:1})}</td>
+        <td colspan="3"></td>
+      </tr>`;
+    });
+  });
+
+  tbody.innerHTML = html;
+}
+
+// Update a single field in-place (no full re-render — preserves focus)
+function updateField(id, field, value) {
+  const data = loadData();
+  const entry = data.entries.find(e => e.id === id);
+  if (!entry) return;
+  if (field === 'amount') entry[field] = parseFloat(value) || 0;
+  else entry[field] = value;
+  saveData(data);
+  // category change: grouping has changed, full re-render needed
+  if (field === 'category') {
+    renderEntryTable();
+    return;
+  }
+  refreshSubtotals(data.entries);
+  updateMetricCards();
+}
+
+// Live update 만원 cell and subtotal while typing amount
+function onAmountInput(id, value) {
+  const aw = parseFloat(value) || 0;
+  const mwCell = document.getElementById('mw-' + id);
+  if (mwCell) {
+    mwCell.textContent = aw ? (aw / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : '-';
+  }
+}
+
+// Recalculate subtotal rows without disturbing focused inputs
+function refreshSubtotals(allEntries) {
+  const filter = document.getElementById('yearFilter').value;
+  let entries = [...allEntries];
+  if (filter !== 'all') entries = entries.filter(e => e.date.startsWith(filter));
+
+  // Group by year+category to recompute each subtotal
+  const groups = {};
+  entries.forEach(e => {
+    const key = e.date.substring(0,4) + '|' + e.category;
+    groups[key] = (groups[key] || 0) + (parseFloat(e.amount) || 0);
+  });
+
+  // Update subtotal rows in DOM (they have class subtotal-row)
+  // Each subtotal row follows all data rows of its category group
+  // We identify them by rebuilding amounts from live input values
+  const tbody = document.getElementById('entryTbody');
+  const subtotalRows = tbody.querySelectorAll('.subtotal-row');
+  subtotalRows.forEach(row => {
+    // Walk backwards to find the category badge text
+    const badge = row.querySelector('.badge-category');
+    if (!badge) return;
+    const cat = badge.textContent.replace(' 소계','').trim();
+
+    // Sum amounts from live inputs for this category (read from DOM)
+    let total = 0;
+    let sibling = row.previousElementSibling;
+    while (sibling && !sibling.classList.contains('subtotal-row')) {
+      const amtInput = sibling.querySelector('input[type="number"]');
+      const catSel = sibling.querySelector('select.cell-select');
+      if (amtInput && catSel && catSel.value === cat) {
+        total += parseFloat(amtInput.value) || 0;
+      }
+      sibling = sibling.previousElementSibling;
+    }
+
+    const cells = row.querySelectorAll('td');
+    if (cells[4]) cells[4].textContent = total.toLocaleString('ko-KR');
+    if (cells[5]) cells[5].textContent = (total/10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 });
+  });
+}
+
+// =====================================================
+// RENDER: SUMMARY TABLE
+// =====================================================
+function renderSummaryTable() {
+  const data = loadData();
+  const rows = getAllYearData(data.entries);
+  const tbody = document.getElementById('summaryTbody');
+
+  let html = '';
+  rows.forEach((r, i) => {
+    const isLatest = (i === rows.length - 1);
+    html += `<tr class="${isLatest ? 'summary-row-total' : ''}">
+      <td class="text-center fw-semibold">${r.date}</td>
+      <td>${fmt(r.부동산)}</td>
+      <td class="text-danger">${fmt(r.부채)}</td>
+      <td>${fmt(r.연금)}</td>
+      <td>${fmt(r.유동자산)}</td>
+      <td class="col-total">${fmt(r.총자산)}</td>
+      <td class="col-avail">${fmt(r.가용연금제외)}</td>
+      <td>${fmtChange(r.d총자산)}</td>
+      <td>${fmtChange(r.d부동산)}</td>
+      <td>${fmtChange(r.d부채)}</td>
+      <td>${fmtChange(r.d연금)}</td>
+      <td>${fmtChange(r.d유동자산)}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+
+  // Update category breakdown for latest year
+  if (rows.length > 0) {
+    const latest = rows[rows.length - 1];
+    renderCategoryBreakdown(latest);
+    renderOwnerBreakdown(data.entries, latest.year);
+  }
+}
+
+function renderCategoryBreakdown(row) {
+  const cats = [
+    { name: '부동산', val: row.부동산, color: '#3b82f6' },
+    { name: '연금', val: row.연금, color: '#10b981' },
+    { name: '유동자산', val: row.유동자산, color: '#f59e0b' },
+    { name: '부채', val: row.부채, color: '#ef4444' },
+  ];
+  const total = row.총자산;
+
+  let html = '<table class="table table-sm"><tbody>';
+  cats.forEach(c => {
+    const pct = total > 0 ? (c.val / (row.총자산 + row.부채) * 100) : 0;
+    html += `<tr>
+      <td><span class="badge badge-category cat-${c.name}">${c.name}</span></td>
+      <td class="text-end fw-semibold">${fmt(c.val)} 만원</td>
+      <td style="width:100px">
+        <div class="progress" style="height:12px">
+          <div class="progress-bar" style="width:${Math.abs(pct).toFixed(1)}%;background:${c.color}"></div>
+        </div>
+      </td>
+      <td class="text-muted" style="width:50px">${pct.toFixed(1)}%</td>
+    </tr>`;
+  });
+  html += `<tr class="table-light fw-bold"><td>총자산</td><td class="text-end">${fmt(total)} 만원</td><td colspan="2"></td></tr>`;
+  html += '</tbody></table>';
+  document.getElementById('categoryBreakdown').innerHTML = html;
+}
+
+function renderOwnerBreakdown(entries, year) {
+  const yearStr = year + '-01-01';
+  const filtered = entries.filter(e => e.date === yearStr || e.date.startsWith(year + '-'));
+  const owners = [...new Set(filtered.map(e => e.owner))].filter(Boolean);
+
+  if (owners.length === 0) {
+    document.getElementById('ownerBreakdown').innerHTML = '<p class="text-muted">데이터 없음</p>';
+    return;
+  }
+
+  let html = '<table class="table table-sm"><thead><tr><th>소유자</th><th>분류</th><th class="text-end">금액 (만원)</th></tr></thead><tbody>';
+  owners.forEach(owner => {
+    const ownerEntries = filtered.filter(e => e.owner === owner);
+    const cats = [...new Set(ownerEntries.map(e => e.category))];
+    cats.forEach((cat, ci) => {
+      const total = ownerEntries.filter(e => e.category === cat).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0) / 10000;
+      html += `<tr>
+        ${ci === 0 ? `<td rowspan="${cats.length}" class="align-middle fw-semibold">${owner}</td>` : ''}
+        <td>${catBadge(cat)}</td>
+        <td class="text-end">${fmt(total)}</td>
+      </tr>`;
+    });
+  });
+  html += '</tbody></table>';
+  document.getElementById('ownerBreakdown').innerHTML = html;
+}
+
+// =====================================================
+// RENDER: CHARTS
+// =====================================================
+function renderCharts() {
+  const data = loadData();
+  const rows = getAllYearData(data.entries);
+  const labels = rows.map(r => r.date.substring(0, 4));
+
+  // Register datalabels plugin globally
+  Chart.register(ChartDataLabels);
+
+  // Destroy old charts
+  [trendChart, pieChart, categoryChart, barChart].forEach(c => { if (c) c.destroy(); });
+
+  // Common label style factory (per-dataset, with individual alignment)
+  function labelStyle(align, anchor, extraColor) {
+    return {
+      display: true,
+      align, anchor,
+      formatter: v => v == null ? '' : fmt(Math.round(v)) + '만',
+      font: { size: 10, weight: '600' },
+      color: extraColor || '#374151',
+      backgroundColor: 'rgba(255,255,255,0.82)',
+      borderRadius: 3,
+      padding: { top: 1, bottom: 1, left: 3, right: 3 },
+    };
+  }
+
+  // 1. Trend chart — per-dataset datalabels to avoid legend/label collision
+  const trendCtx = document.getElementById('trendChart').getContext('2d');
+  trendChart = new Chart(trendCtx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '총자산', data: rows.map(r => r.부동산 + r.연금 + r.유동자산),
+          borderColor: '#1a3c6e', backgroundColor: 'rgba(26,60,110,0.1)', tension: 0.3, fill: true, pointRadius: 4,
+          datalabels: labelStyle('top', 'end'),
+        },
+        {
+          label: '가용자산(연금제외)', data: rows.map(r => r.가용연금제외),
+          borderColor: '#2563eb', borderDash: [5,5], tension: 0.3, pointRadius: 4,
+          datalabels: { ...labelStyle('bottom', 'start'), offset: 4 },
+        },
+        {
+          label: '부채', data: rows.map(r => r.부채),
+          borderColor: '#dc2626', borderDash: [3,3], tension: 0.3, pointRadius: 4,
+          datalabels: { ...labelStyle('top', 'end', '#dc2626'), offset: 4 },
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 28, bottom: 8, left: 4, right: 10 } },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
+        datalabels: { display: false }, // chart-level default off; each dataset opts in
+      },
+      scales: { y: { ticks: { callback: v => fmt(v) + '만' } } }
+    }
+  });
+
+  // 2. Doughnut chart (latest year)
+  const latest = rows[rows.length - 1];
+  const pieTotal = latest.부동산 + latest.연금 + latest.유동자산 + latest.부채;
+  const pieCtx = document.getElementById('pieChart').getContext('2d');
+  pieChart = new Chart(pieCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['부동산', '연금', '유동자산', '부채'],
+      datasets: [{
+        data: [latest.부동산, latest.연금, latest.유동자산, latest.부채],
+        backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 }, padding: 10 } },
+        tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmt(ctx.parsed) + ' 만원' } },
+        datalabels: {
+          display: ctx => pieTotal > 0 && (ctx.dataset.data[ctx.dataIndex] / pieTotal) >= 0.05,
+          formatter: (v) => {
+            const pct = pieTotal > 0 ? (v / pieTotal * 100).toFixed(1) : 0;
+            return fmt(Math.round(v)) + '만\n(' + pct + '%)';
+          },
+          color: '#fff',
+          font: { size: 11, weight: 'bold' },
+          textAlign: 'center',
+        }
+      }
+    }
+  });
+
+  // 3. Category trend chart — alternating top/bottom per dataset
+  const catCtx = document.getElementById('categoryChart').getContext('2d');
+  categoryChart = new Chart(catCtx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '부동산', data: rows.map(r => r.부동산),
+          borderColor: '#3b82f6', tension: 0.3, pointRadius: 4,
+          datalabels: labelStyle('top', 'end'),
+        },
+        {
+          label: '연금', data: rows.map(r => r.연금),
+          borderColor: '#10b981', tension: 0.3, pointRadius: 4,
+          datalabels: { ...labelStyle('bottom', 'start'), offset: 4 },
+        },
+        {
+          label: '유동자산', data: rows.map(r => r.유동자산),
+          borderColor: '#f59e0b', tension: 0.3, pointRadius: 4,
+          datalabels: { ...labelStyle('top', 'end'), offset: 4 },
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 28, bottom: 8, left: 4, right: 10 } },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
+        datalabels: { display: false }, // chart-level default off; each dataset opts in
+      },
+      scales: { y: { ticks: { callback: v => fmt(v) + '만' } } }
+    }
+  });
+
+  // 4. Bar chart — legend moved to bottom so it doesn't collide with top labels
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  barChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '총자산', data: rows.map(r => r.총자산), backgroundColor: '#2563eb',
+          datalabels: { display: true, anchor: 'end', align: 'end',
+            formatter: v => fmt(Math.round(v)) + '만', font: { size: 10, weight: '600' }, color: '#1a3c6e',
+            backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 3, padding: { top:1,bottom:1,left:3,right:3 } }
+        },
+        {
+          label: '부채', data: rows.map(r => r.부채), backgroundColor: '#ef4444',
+          datalabels: { display: true, anchor: 'end', align: 'end',
+            formatter: v => fmt(Math.round(v)) + '만', font: { size: 10, weight: '600' }, color: '#dc2626',
+            backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 3, padding: { top:1,bottom:1,left:3,right:3 } }
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      layout: { padding: { top: 32, bottom: 8 } },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
+        datalabels: { display: false }, // chart-level default off; each dataset opts in
+      },
+      scales: { y: { ticks: { callback: v => fmt(v) + '만' } } }
+    }
+  });
+}
+
+// =====================================================
+// METRIC CARDS
+// =====================================================
+function updateMetricCards() {
+  const data = loadData();
+  const rows = getAllYearData(data.entries);
+  if (rows.length === 0) return;
+  const latest = rows[rows.length - 1];
+  const prev = rows.length > 1 ? rows[rows.length - 2] : null;
+
+  function setMetric(id, chgId, val, prevVal) {
+    document.getElementById(id).textContent = fmt(val) + ' 만원';
+    if (chgId && prev) {
+      const chg = val - prevVal;
+      const cls = chg > 0 ? 'positive' : (chg < 0 ? 'negative' : 'text-muted');
+      const sign = chg > 0 ? '+' : '';
+      document.getElementById(chgId).innerHTML = `<span class="${cls}">${sign}${fmt(chg)} 만원 (전년대비)</span>`;
+    }
+  }
+
+  setMetric('m-total', 'm-total-chg', latest.총자산, prev?.총자산);
+  setMetric('m-avail', 'm-avail-chg', latest.가용연금제외, prev?.가용연금제외);
+  setMetric('m-debt', 'm-debt-chg', latest.부채, prev?.부채);
+  setMetric('m-net', 'm-net-chg', latest.가용연금제외, prev?.가용연금제외);
+}
+
+// =====================================================
+// =====================================================
+// CLEAR ALL
+// =====================================================
+function clearAllFinanceData() {
+  const data = loadData();
+  if (!confirm(`⚠️ 자산 입력 목록 ${data.entries.length}개를 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`)) return;
+  const empty = { entries: [] };
+  saveData(empty);
+  _financeData = empty;
+  renderEntryTable();
+  renderSummaryTable();
+  updateMetricCards();
+}
+
+function clearAllStockData() {
+  const stocks = loadStockData();
+  if (!confirm(`⚠️ 주식 현황 목록 ${stocks.length}개를 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`)) return;
+  _stockData = [];
+  saveStockData([]);
+  renderStockTab();
+}
+
+// =====================================================
+// EXPORT / IMPORT — 자산 입력
+// =====================================================
+function exportFinanceData() {
+  const data = loadData();
+  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `finance_backup_${date}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importFinanceData(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.entries || !Array.isArray(data.entries)) throw new Error('형식 오류');
+      if (!confirm(`📂 ${data.entries.length}개 항목을 불러옵니다.\n현재 데이터가 교체됩니다. 계속하시겠습니까?`)) return;
+      saveData(data);
+      _financeData = data;
+      renderEntryTable();
+      renderSummaryTable();
+      updateMetricCards();
+      alert('✅ 자산 데이터를 불러왔습니다.');
+    } catch { alert('❌ 올바른 자산 백업 파일이 아닙니다.'); }
+  };
+  reader.readAsText(file);
+}
+
+// =====================================================
+// EXPORT / IMPORT — 주식 현황
+// =====================================================
+function exportStockData() {
+  const stocks = loadStockData();
+  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const blob = new Blob([JSON.stringify(stocks, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `stock_backup_${date}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importStockData(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const stocks = JSON.parse(e.target.result);
+      if (!Array.isArray(stocks)) throw new Error('형식 오류');
+      if (!confirm(`📂 ${stocks.length}개 주식 항목을 불러옵니다.\n현재 데이터가 교체됩니다. 계속하시겠습니까?`)) return;
+      _stockData = stocks;
+      saveStockData(stocks);
+      renderStockTab();
+      alert('✅ 주식 데이터를 불러왔습니다.');
+    } catch { alert('❌ 올바른 주식 백업 파일이 아닙니다.'); }
+  };
+  reader.readAsText(file);
+}
+
+// =====================================================
+// CALCULATE (main action)
+// =====================================================
+function recalculate() {
+  renderEntryTable();
+  renderSummaryTable();
+  renderCharts();
+  updateMetricCards();
+
+  // Animate button
+  const btn = document.querySelector('.btn-calc');
+  btn.textContent = '✓ 계산 완료';
+  btn.style.background = '#16a34a';
+  setTimeout(() => { btn.textContent = '🔄 계산'; btn.style.background = ''; }, 1500);
+
+  // Switch to summary tab
+  document.querySelector('[data-bs-target="#tab-summary"]').click();
+}
+
+// =====================================================
+// ENTRY CRUD
+// =====================================================
+let addModal;
+function showAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '항목 추가';
+  document.getElementById('inp-date').value = '2026-01-01';
+  document.getElementById('inp-category').value = '부동산';
+  document.getElementById('inp-item').value = '';
+  document.getElementById('inp-owner').value = '';
+  document.getElementById('inp-amount').value = '';
+  document.getElementById('inp-joindate').value = '';
+  document.getElementById('inp-maturity').value = '';
+  updateAmountPreview();
+  addModal.show();
+}
+
+function updateAmountPreview() {
+  const v = parseFloat(document.getElementById('inp-amount').value);
+  const p = document.getElementById('amountPreview');
+  if (v) {
+    p.textContent = '→ ' + v.toLocaleString('ko-KR') + '원 = ' + (v / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '만원';
+    p.style.color = '#dc2626';
+  } else {
+    p.textContent = '';
+  }
+}
+
+function saveEntry() {
+  const entry = {
+    date: document.getElementById('inp-date').value,
+    category: document.getElementById('inp-category').value,
+    item: document.getElementById('inp-item').value.trim(),
+    owner: document.getElementById('inp-owner').value.trim(),
+    amount: parseFloat(document.getElementById('inp-amount').value) || 0,
+    joinDate: document.getElementById('inp-joindate').value.trim(),
+    maturity: document.getElementById('inp-maturity').value.trim(),
+  };
+
+  if (!entry.date || !entry.category || entry.amount <= 0) {
+    alert('날짜, 분류, 적립금은 필수 입력 항목입니다.');
+    return;
+  }
+
+  const data = loadData();
+  if (editingId) {
+    const idx = data.entries.findIndex(x => x.id === editingId);
+    if (idx !== -1) data.entries[idx] = { ...data.entries[idx], ...entry };
+  } else {
+    entry.id = genId();
+    data.entries.push(entry);
+  }
+  saveData(data);
+  addModal.hide();
+  renderEntryTable();
+  updateMetricCards();
+}
+
+function deleteEntry(id) {
+  if (!confirm('이 항목을 삭제하시겠습니까?')) return;
+  const data = loadData();
+  data.entries = data.entries.filter(e => e.id !== id);
+  saveData(data);
+  renderEntryTable();
+  updateMetricCards();
+}
+
+// =====================================================
+// STOCK TAB
+// =====================================================
+const STOCK_KEY = 'stock_data_v1';
+const STOCK_CATEGORIES = ['국내주식', '해외주식', 'ETF', '채권', '기타'];
+
+function loadStockData() {
+  if (!_stockData) {
+    _stockData = JSON.parse(localStorage.getItem(STOCK_KEY) || '[]');
+  }
+  return _stockData;
+}
+
+function saveStockData(stocks) {
+  _stockData = stocks;
+  db.ref('stocks').set(stocks).catch(() => {
+    localStorage.setItem(STOCK_KEY, JSON.stringify(stocks));
+  });
+}
+
+function calcStockTotal(s) {
+  const shares = parseFloat(s.shares) || 0;
+  const price = parseFloat(s.price) || 0;
+  return shares * price;
+}
+
+function addStockEntry() {
+  const stocks = loadStockData();
+  stocks.push({
+    id: 'stk_' + Date.now(),
+    owner: '', country: '', category: '국내주식',
+    account: '', stockName: '', shares: 0, price: 0, broker: ''
+  });
+  saveStockData(stocks);
+  renderStockTab();
+  // 마지막 행으로 스크롤 후 첫 입력란 포커스
+  setTimeout(() => {
+    const wrap = document.querySelector('.stock-table-wrap');
+    if (wrap) wrap.scrollTop = wrap.scrollHeight;
+    const rows = document.querySelectorAll('#stockTbody tr:not(.stock-total-row)');
+    if (rows.length) rows[rows.length - 1].querySelector('.cell-input')?.focus();
+  }, 50);
+}
+
+function deleteStockEntry(id) {
+  const stocks = loadStockData().filter(s => s.id !== id);
+  saveStockData(stocks);
+  renderStockTab();
+}
+
+// 자동완성 datalist 필드 정의
+const STOCK_AC_FIELDS = [
+  { key: 'owner',     id: 'stock-dl-owner' },
+  { key: 'country',  id: 'stock-dl-country' },
+  { key: 'category', id: 'stock-dl-category' },
+  { key: 'account',  id: 'stock-dl-account' },
+  { key: 'stockName',id: 'stock-dl-stockName' },
+  { key: 'broker',   id: 'stock-dl-broker' },
+];
+
+function updateStockDataLists(stocks) {
+  STOCK_AC_FIELDS.forEach(({ key, id }) => {
+    let dl = document.getElementById(id);
+    if (!dl) { dl = document.createElement('datalist'); dl.id = id; document.body.appendChild(dl); }
+    const vals = [...new Set(stocks.map(s => s[key]).filter(v => v))];
+    dl.innerHTML = vals.map(v => `<option value="${v}"></option>`).join('');
+  });
+}
+
+function updateStockField(id, field, value) {
+  const stocks = loadStockData();
+  const s = stocks.find(x => x.id === id);
+  if (!s) return;
+  if (field === 'shares' || field === 'price') {
+    s[field] = parseFloat(value) || 0;
+  } else {
+    s[field] = value;
+  }
+  saveStockData(stocks);
+  // Update 총금액 cell live
+  const totalCell = document.getElementById('stock-total-' + id);
+  if (totalCell) totalCell.textContent = fmt(Math.round(calcStockTotal(s)));
+  refreshStockSummary(stocks);
+  updateStockDataLists(stocks);
+}
+
+// ── 필터 / 정렬 상태 ──────────────────────────────────────
+let _stockQuery = '';
+let _stockSortField = null;   // null = 정렬 없음
+let _stockSortDir   = 'asc';  // 'asc' | 'desc'
+
+function onStockSearch(q) {
+  _stockQuery = q.trim().toLowerCase();
+  renderStockTab();
+}
+function clearStockSearch() {
+  _stockQuery = '';
+  const inp = document.getElementById('stockSearchInput');
+  if (inp) inp.value = '';
+  renderStockTab();
+}
+function sortStockBy(field) {
+  if (_stockSortField === field) {
+    if (_stockSortDir === 'asc')  { _stockSortDir = 'desc'; }
+    else                           { _stockSortField = null; _stockSortDir = 'asc'; }
+  } else {
+    _stockSortField = field;
+    _stockSortDir   = 'asc';
+  }
+  renderStockTab();
+}
+
+function applyStockFilter(stocks) {
+  let list = stocks.map(s => ({ ...s, _total: calcStockTotal(s) }));
+
+  // 검색 필터
+  if (_stockQuery) {
+    const TEXT_FIELDS = ['owner','country','category','account','stockName','broker'];
+    list = list.filter(s =>
+      TEXT_FIELDS.some(f => (s[f] || '').toLowerCase().includes(_stockQuery)) ||
+      String(s.shares || '').includes(_stockQuery) ||
+      String(s.price  || '').includes(_stockQuery)
+    );
+  }
+
+  // 정렬
+  if (_stockSortField) {
+    const sortKey = _stockSortField === 'total' ? '_total' : _stockSortField;
+    const NUM_FIELDS = ['shares','price','_total'];
+    const isNum = NUM_FIELDS.includes(sortKey);
+    list.sort((a, b) => {
+      const av = isNum ? (parseFloat(a[sortKey]) || 0)
+                       : (a[sortKey] || '').toString().toLowerCase();
+      const bv = isNum ? (parseFloat(b[sortKey]) || 0)
+                       : (b[sortKey] || '').toString().toLowerCase();
+      if (av < bv) return _stockSortDir === 'asc' ? -1 : 1;
+      if (av > bv) return _stockSortDir === 'asc' ?  1 : -1;
+      return 0;
+    });
+  }
+  return list;
+}
+
+function updateSortArrows() {
+  const fields = ['owner','country','category','account','stockName','shares','price','total','broker'];
+  fields.forEach(f => {
+    const el = document.getElementById('sort-' + f);
+    if (!el) return;
+    if (_stockSortField !== f) {
+      el.textContent = '↕'; el.className = 'sort-arrow';
+    } else if (_stockSortDir === 'asc') {
+      el.textContent = '▲'; el.className = 'sort-arrow asc';
+    } else {
+      el.textContent = '▼'; el.className = 'sort-arrow desc';
+    }
+  });
+}
+
+function renderStockTab() {
+  const stocks = loadStockData();
+  const tbody = document.getElementById('stockTbody');
+  if (!tbody) return;
+
+  updateStockDataLists(stocks);
+
+  const filtered = applyStockFilter(stocks);
+
+  // 건수 표시
+  const countEl = document.getElementById('stockRowCount');
+  if (countEl) {
+    countEl.textContent = _stockQuery
+      ? `검색 결과 ${filtered.length} / ${stocks.length}건`
+      : `총 ${stocks.length}건`;
+  }
+
+  updateSortArrows();
+
+  tbody.innerHTML = filtered.map(s => {
+    const total = s._total;
+    const catClass = 'cat-' + (STOCK_CATEGORIES.includes(s.category) ? s.category : '기타');
+    return `<tr>
+      <td><input class="cell-input" list="stock-dl-owner"     value="${s.owner || ''}"     onchange="updateStockField('${s.id}','owner',this.value)"     placeholder="소유자"></td>
+      <td><input class="cell-input" list="stock-dl-country"   value="${s.country || ''}"   onchange="updateStockField('${s.id}','country',this.value)"   placeholder="국가"></td>
+      <td><input class="cell-input" list="stock-dl-category"  value="${s.category || ''}"  onchange="updateStockField('${s.id}','category',this.value)"  placeholder="분류"></td>
+      <td><input class="cell-input" list="stock-dl-account"   value="${s.account || ''}"   onchange="updateStockField('${s.id}','account',this.value)"   placeholder="계좌명"></td>
+      <td><input class="cell-input" list="stock-dl-stockName" value="${s.stockName || ''}" onchange="updateStockField('${s.id}','stockName',this.value)" placeholder="종목명"></td>
+      <td style="text-align:right"><input class="cell-input" style="text-align:right" type="number" value="${s.shares || ''}" oninput="updateStockField('${s.id}','shares',this.value)" placeholder="0"></td>
+      <td style="text-align:right"><input class="cell-input" style="text-align:right" type="number" value="${s.price || ''}" oninput="updateStockField('${s.id}','price',this.value)" placeholder="0"></td>
+      <td style="text-align:right;font-weight:600;color:#1a3c6e" id="stock-total-${s.id}">${fmt(Math.round(total))}</td>
+      <td><input class="cell-input" list="stock-dl-broker" lang="ko" value="${s.broker || ''}" onchange="updateStockField('${s.id}','broker',this.value)" placeholder="증권사"></td>
+      <td style="text-align:center"><button class="delete-btn" onclick="deleteStockEntry('${s.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  // 분류별 합계는 전체 데이터 기준
+  refreshStockSummary(stocks);
+}
+
+function refreshStockSummary(stocks) {
+  const tbody = document.getElementById('stockSummaryTbody');
+  if (!tbody) return;
+
+  const grandTotal = stocks.reduce((s, x) => s + calcStockTotal(x), 0);
+
+  // Group by category → owner
+  const groups = {};
+  stocks.forEach(s => {
+    const cat   = s.category || '기타';
+    const owner = s.owner    || '(미입력)';
+    const t     = calcStockTotal(s);
+    if (!groups[cat]) groups[cat] = { total: 0, count: 0, owners: {} };
+    groups[cat].total += t;
+    groups[cat].count++;
+    if (!groups[cat].owners[owner]) groups[cat].owners[owner] = { total: 0, count: 0 };
+    groups[cat].owners[owner].total += t;
+    groups[cat].owners[owner].count++;
+  });
+
+  const catOrder  = STOCK_CATEGORIES.filter(c => groups[c]);
+  const otherCats = Object.keys(groups).filter(c => !STOCK_CATEGORIES.includes(c));
+  const sorted    = [...catOrder, ...otherCats];
+
+  let rows = '';
+  sorted.forEach(cat => {
+    const g        = groups[cat];
+    const catPct   = grandTotal > 0 ? (g.total / grandTotal * 100).toFixed(1) : '0.0';
+    const catClass = 'cat-' + (STOCK_CATEGORIES.includes(cat) ? cat : '기타');
+    const ownerEntries = Object.entries(g.owners);
+
+    // 분류 헤더행 (rowspan = 소유자 수)
+    const span = ownerEntries.length;
+    const firstOwner = ownerEntries[0];
+    rows += `<tr style="border-top:2px solid #dee2e6">
+      <td rowspan="${span}" style="vertical-align:middle;font-weight:600">
+        <span class="badge-category ${catClass}">${cat}</span>
+      </td>
+      <td>${firstOwner[0]}</td>
+      <td style="text-align:right">${fmt(Math.round(firstOwner[1].total))}</td>
+      <td style="text-align:right">${grandTotal > 0 ? (firstOwner[1].total / grandTotal * 100).toFixed(1) : '0.0'}%</td>
+      <td style="text-align:right">${firstOwner[1].count}개</td>
+    </tr>`;
+
+    // 나머지 소유자 행
+    ownerEntries.slice(1).forEach(([owner, ow]) => {
+      rows += `<tr>
+        <td>${owner}</td>
+        <td style="text-align:right">${fmt(Math.round(ow.total))}</td>
+        <td style="text-align:right">${grandTotal > 0 ? (ow.total / grandTotal * 100).toFixed(1) : '0.0'}%</td>
+        <td style="text-align:right">${ow.count}개</td>
+      </tr>`;
+    });
+
+    // 분류 소계 행 (소유자가 2명 이상일 때)
+    if (span > 1) {
+      rows += `<tr style="background:#f8fafc">
+        <td colspan="2" style="text-align:right;color:#6b7280;font-size:0.78rem">소계</td>
+        <td style="text-align:right;font-weight:700">${fmt(Math.round(g.total))}</td>
+        <td style="text-align:right;color:#6b7280">${catPct}%</td>
+        <td style="text-align:right;color:#6b7280">${g.count}개</td>
+      </tr>`;
+    }
+  });
+
+  // 전체 합계 행
+  rows += `<tr class="stock-total-row">
+    <td colspan="2">합계</td>
+    <td style="text-align:right">${fmt(Math.round(grandTotal))}</td>
+    <td style="text-align:right">100%</td>
+    <td style="text-align:right">${stocks.length}개</td>
+  </tr>`;
+
+  tbody.innerHTML = rows;
+}
+
+// =====================================================
+// 백업 내보내기 / 가져오기
+// =====================================================
+function exportData() {
+  const payload = {
+    finance: loadData(),
+    stocks:  loadStockData(),
+    exportedAt: new Date().toISOString(),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '재무현황_백업_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+async function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const payload = JSON.parse(text);
+
+    // 유효성 확인
+    if (!payload.finance || !Array.isArray(payload.finance.entries)) {
+      alert('올바른 백업 파일이 아닙니다.'); return;
+    }
+
+    if (!confirm('현재 데이터를 백업 파일로 덮어쓰시겠습니까?')) return;
+
+    // 메모리 캐시 갱신
+    _financeData = payload.finance;
+    _stockData   = Array.isArray(payload.stocks) ? payload.stocks : [];
+
+    // 서버 또는 localStorage에 저장
+    saveData(_financeData);
+    saveStockData(_stockData);
+
+    // 화면 갱신
+    renderEntryTable();
+    updateMetricCards();
+    renderSummaryTable();
+    renderStockTab();
+
+    const s = document.getElementById('sync-status');
+    if (s) { s.textContent = '🟢 복원 완료'; s.style.color = '#16a34a'; }
+    alert('✅ 데이터 복원이 완료되었습니다!');
+  } catch(e) {
+    alert('파일 읽기 오류: ' + e.message);
+  }
+  event.target.value = ''; // 같은 파일 재선택 가능하도록 초기화
+}
+
+// =====================================================
+// INIT
+// =====================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  addModal = new bootstrap.Modal(document.getElementById('addModal'));
+
+  // Current date
+  const now = new Date();
+  document.getElementById('currentDateDisplay').textContent =
+    now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월 ' + now.getDate() + '일';
+
+  // Amount preview
+  document.getElementById('inp-amount').addEventListener('input', updateAmountPreview);
+
+  // Year filter
+  document.getElementById('yearFilter').addEventListener('change', renderEntryTable);
+
+  // Chart tab trigger
+  document.querySelector('[data-bs-target="#tab-chart"]').addEventListener('shown.bs.tab', () => {
+    renderCharts();
+  });
+
+  // 서버(NAS)에서 데이터 로드 후 렌더링
+  await initData();
+  renderEntryTable();
+  updateMetricCards();
+  renderSummaryTable();
+});
+</script>
+</body>
+</html>
