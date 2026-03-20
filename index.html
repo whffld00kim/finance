@@ -108,6 +108,15 @@
   .stock-filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .stock-filter-bar .form-control-sm { font-size: 0.82rem; }
   .stock-filter-bar .badge-count { font-size: 0.75rem; color: #6b7280; white-space: nowrap; }
+  /* 관리자 권한 */
+  .admin-only { display: none; }
+  body.admin-mode .admin-only { display: inline-flex; }
+  body.admin-mode label.admin-only { display: inline-flex; }
+  body.admin-mode th.admin-only, body.admin-mode td.admin-only { display: table-cell; }
+  body.viewer-mode .cell-input,
+  body.viewer-mode .cell-select { pointer-events: none; cursor: default; color: inherit; }
+  body.viewer-mode .delete-btn { display: none; }
+  .lock-btn { font-size: 0.78rem; padding: 2px 10px; border-radius: 20px; font-weight: 600; transition: all 0.2s; }
 
 </style>
 </head>
@@ -118,10 +127,11 @@
     <span class="navbar-brand">📊 재무현황 관리 시스템</span>
     <div class="d-flex align-items-center gap-2 ms-auto">
       <span style="font-size:0.78rem;opacity:0.85;" id="sync-status" class="text-white">⏳ 서버 연결 중...</span>
-      <button onclick="exportData()" class="btn btn-sm btn-outline-light py-0" style="font-size:0.75rem;" title="데이터를 JSON 파일로 저장">💾 백업</button>
-      <label class="btn btn-sm btn-outline-light py-0 mb-0" style="font-size:0.75rem;cursor:pointer;" title="JSON 파일을 불러와 서버에 저장">
+      <button onclick="exportData()" class="btn btn-sm btn-outline-light py-0 admin-only" style="font-size:0.75rem;" title="데이터를 JSON 파일로 저장">💾 백업</button>
+      <label class="btn btn-sm btn-outline-light py-0 mb-0 admin-only" style="font-size:0.75rem;cursor:pointer;" title="JSON 파일을 불러와 서버에 저장">
         📂 복원<input type="file" accept=".json" onchange="importData(event)" style="display:none">
       </label>
+      <button onclick="toggleAdmin()" id="lockBtn" class="btn lock-btn btn-outline-light">🔒 잠김</button>
       <span class="text-white" style="font-size:0.82rem;" id="currentDateDisplay"></span>
     </div>
   </div>
@@ -131,7 +141,7 @@
 
   <!-- Metric Cards -->
   <div class="row g-3 mb-3" id="metricCards">
-    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">총 자산</div><div class="metric-value" id="m-total">-</div><div class="metric-change" id="m-total-chg"></div></div></div>
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">순 자산</div><div class="metric-value" id="m-total">-</div><div class="metric-change" id="m-total-chg"></div></div></div>
     <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">가용자산 (연금제외)</div><div class="metric-value" id="m-avail">-</div><div class="metric-change" id="m-avail-chg"></div></div></div>
     <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">총 부채</div><div class="metric-value text-danger" id="m-debt">-</div><div class="metric-change" id="m-debt-chg"></div></div></div>
     <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">순자산 (연금제외)</div><div class="metric-value" id="m-net">-</div><div class="metric-change" id="m-net-chg"></div></div></div>
@@ -152,18 +162,22 @@
         <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 gap-2">
           <div class="section-title mb-0">■ 연도별 자산 세부내역</div>
           <div class="d-flex flex-wrap gap-1 align-items-center">
-            <select class="form-select form-select-sm" id="yearFilter" style="width:110px;">
+            <select class="form-select form-select-sm d-none" id="yearFilter" style="width:110px;">
               <option value="all">전체 연도</option>
               <option value="2026" selected>2026년</option>
               <option value="2025">2025년</option>
               <option value="2024">2024년</option>
               <option value="2023">2023년</option>
             </select>
-            <button class="btn btn-sm btn-outline-secondary" onclick="exportFinanceData()">💾 <span class="d-none d-sm-inline">내보내기</span></button>
-            <label class="btn btn-sm btn-outline-secondary mb-0" style="cursor:pointer">📂 <span class="d-none d-sm-inline">가져오기</span><input type="file" accept=".json" style="display:none" onchange="importFinanceData(this.files[0]);this.value=''"></label>
-            <button class="btn btn-sm btn-outline-danger" onclick="clearAllFinanceData()">🗑 <span class="d-none d-sm-inline">전체 삭제</span></button>
-            <button class="btn btn-sm btn-outline-primary" onclick="showAddModal()">+ <span class="d-none d-sm-inline">항목 추가</span></button>
-            <button class="btn btn-sm btn-calc" onclick="recalculate()">🔄 <span class="d-none d-sm-inline">계산</span></button>
+            <label class="text-muted small mb-0">기준일</label>
+            <input type="date" id="globalFinanceDate" class="form-control form-control-sm" style="width:145px;"
+              onchange="onGlobalFinanceDateChange(this.value)">
+            <div class="vr mx-1"></div>
+            <button class="btn btn-sm btn-outline-secondary admin-only" onclick="exportFinanceData()">💾 <span class="d-none d-sm-inline">내보내기</span></button>
+            <label class="btn btn-sm btn-outline-secondary mb-0 admin-only" style="cursor:pointer">📂 <span class="d-none d-sm-inline">가져오기</span><input type="file" accept=".json" style="display:none" onchange="importFinanceData(this.files[0]);this.value=''"></label>
+            <button class="btn btn-sm btn-outline-danger admin-only" onclick="clearAllFinanceData()">🗑 <span class="d-none d-sm-inline">전체 삭제</span></button>
+            <button class="btn btn-sm btn-outline-primary admin-only" onclick="showAddModal()">+ <span class="d-none d-sm-inline">항목 추가</span></button>
+            <button class="btn btn-sm btn-calc admin-only" onclick="recalculate()">🔄 <span class="d-none d-sm-inline">계산</span></button>
           </div>
         </div>
 
@@ -171,13 +185,12 @@
           <table class="table table-bordered table-hover" id="entryTable">
             <thead>
               <tr>
-                <th style="width:90px">날짜</th>
                 <th style="width:80px">분류</th>
                 <th style="width:120px">항목</th>
                 <th style="width:70px">소유자</th>
                 <th style="width:140px">적립금 (원)</th>
                 <th style="width:80px">적립금 (만원)</th>
-                <th style="width:40px">삭제</th>
+                <th style="width:40px" class="admin-only">삭제</th>
               </tr>
             </thead>
             <tbody id="entryTbody"></tbody>
@@ -189,7 +202,13 @@
     <!-- ===== TAB 2: 총자산 현황 ===== -->
     <div class="tab-pane fade" id="tab-summary">
       <div class="section-card">
-        <div class="section-title">■ 총자산 현황 (단위: 만원)</div>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="section-title mb-0">■ 총자산 현황 (단위: 만원)</div>
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-outline-secondary admin-only" onclick="exportSummaryData()">💾 <span class="d-none d-sm-inline">내보내기</span></button>
+            <label class="btn btn-sm btn-outline-secondary mb-0 admin-only" style="cursor:pointer">📂 <span class="d-none d-sm-inline">가져오기</span><input type="file" accept=".json" style="display:none" onchange="importSummaryData(this.files[0]);this.value=''"></label>
+          </div>
+        </div>
         <div class="table-responsive">
           <table class="table table-bordered summary-table" id="summaryTable">
             <thead>
@@ -199,13 +218,14 @@
                 <th>부채</th>
                 <th>연금</th>
                 <th>유동자산</th>
-                <th class="col-total">총자산</th>
+                <th class="col-total">순자산</th>
                 <th class="col-avail">가용자산<br><small>(연금제외)</small></th>
-                <th>총자산증감</th>
+                <th>순자산증감</th>
                 <th>부동산증감</th>
                 <th>부채증감</th>
                 <th>연금증감</th>
                 <th>유동자산증감</th>
+                <th style="width:40px" class="admin-only">삭제</th>
               </tr>
             </thead>
             <tbody id="summaryTbody"></tbody>
@@ -264,11 +284,15 @@
       <div class="section-card">
         <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-2 gap-2">
           <div class="section-title mb-0">■ 주식 보유 현황</div>
-          <div class="d-flex flex-wrap gap-1">
-            <button class="btn btn-sm btn-outline-secondary" onclick="exportStockData()">💾 <span class="d-none d-sm-inline">내보내기</span></button>
-            <label class="btn btn-sm btn-outline-secondary mb-0" style="cursor:pointer">📂 <span class="d-none d-sm-inline">가져오기</span><input type="file" accept=".json" style="display:none" onchange="importStockData(this.files[0]);this.value=''"></label>
-            <button class="btn btn-sm btn-outline-danger" onclick="clearAllStockData()">🗑 <span class="d-none d-sm-inline">전체 삭제</span></button>
-            <button class="btn btn-sm btn-outline-primary" onclick="addStockEntry()">+ <span class="d-none d-sm-inline">항목 추가</span></button>
+          <div class="d-flex flex-wrap gap-1 align-items-center">
+            <label class="text-muted small mb-0">기준일</label>
+            <input type="date" id="globalStockDate" class="form-control form-control-sm" style="width:145px;"
+              onchange="onGlobalStockDateChange(this.value)">
+            <div class="vr mx-1"></div>
+            <button class="btn btn-sm btn-outline-secondary admin-only" onclick="exportStockData()">💾 <span class="d-none d-sm-inline">내보내기</span></button>
+            <label class="btn btn-sm btn-outline-secondary mb-0 admin-only" style="cursor:pointer">📂 <span class="d-none d-sm-inline">가져오기</span><input type="file" accept=".json" style="display:none" onchange="importStockData(this.files[0]);this.value=''"></label>
+            <button class="btn btn-sm btn-outline-danger admin-only" onclick="clearAllStockData()">🗑 <span class="d-none d-sm-inline">전체 삭제</span></button>
+            <button class="btn btn-sm btn-outline-primary admin-only" onclick="addStockEntry()">+ <span class="d-none d-sm-inline">항목 추가</span></button>
           </div>
         </div>
         <!-- 필터 바 -->
@@ -295,7 +319,7 @@
                 <th class="sort-th" style="width:90px;text-align:right"  onclick="sortStockBy('price')">현재가 (원) <span class="sort-arrow" id="sort-price"></span></th>
                 <th class="sort-th" style="width:110px;text-align:right" onclick="sortStockBy('total')">총금액 (원) <span class="sort-arrow" id="sort-total"></span></th>
                 <th class="sort-th" style="width:80px" onclick="sortStockBy('broker')">증권명 <span class="sort-arrow" id="sort-broker"></span></th>
-                <th style="width:40px">삭제</th>
+                <th style="width:40px" class="admin-only">삭제</th>
               </tr>
             </thead>
             <tbody id="stockTbody"></tbody>
@@ -305,7 +329,10 @@
 
       <!-- 분류별 합계 -->
       <div class="section-card">
-        <div class="section-title">■ 분류별 총금액 합계 (단위: 원)</div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="section-title mb-0">■ 분류별 총금액 합계 (단위: 원)</div>
+          <button class="btn btn-sm btn-primary admin-only" onclick="importStockSummaryToFinance()">📥 자산 입력으로 가져오기</button>
+        </div>
         <div class="table-responsive">
           <table class="table table-bordered stock-summary-table" id="stockSummaryTable">
             <thead>
@@ -326,6 +353,28 @@
   </div>
 </div>
 
+<!-- 비밀번호 인증 Modal -->
+<div class="modal fade" id="authModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--primary);color:#fff;">
+        <h6 class="modal-title">🔐 관리자 인증</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-2">관리자 비밀번호를 입력하세요.</p>
+        <input type="password" class="form-control" id="passwordInput" placeholder="비밀번호"
+          onkeydown="if(event.key==='Enter') submitPassword()">
+        <div class="text-danger small mt-1" id="authError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+        <button class="btn btn-primary btn-sm" onclick="submitPassword()">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Add/Edit Modal -->
 <div class="modal fade" id="addModal" tabindex="-1">
   <div class="modal-dialog">
@@ -335,10 +384,6 @@
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="mb-2">
-          <label class="form-label fw-semibold">날짜</label>
-          <input type="date" class="form-control" id="inp-date">
-        </div>
         <div class="mb-2">
           <label class="form-label fw-semibold">분류</label>
           <select class="form-select" id="inp-category">
@@ -377,6 +422,73 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
 // =====================================================
+// 관리자 인증
+// =====================================================
+const ADMIN_PASSWORD = '1234'; // ← 비밀번호 변경 시 이 값을 수정하세요
+let isAdmin = sessionStorage.getItem('finance_admin') === 'true';
+let authModal;
+let _pendingCallback = null;
+
+function updateAdminUI() {
+  const lockBtn = document.getElementById('lockBtn');
+  if (lockBtn) {
+    if (isAdmin) {
+      lockBtn.textContent = '🔓 관리자';
+      lockBtn.className = 'btn lock-btn btn-success';
+    } else {
+      lockBtn.textContent = '🔒 잠김';
+      lockBtn.className = 'btn lock-btn btn-outline-light';
+    }
+  }
+  if (isAdmin) {
+    document.body.classList.add('admin-mode');
+    document.body.classList.remove('viewer-mode');
+  } else {
+    document.body.classList.remove('admin-mode');
+    document.body.classList.add('viewer-mode');
+  }
+}
+
+function requireAdmin(callback) {
+  if (isAdmin) { callback(); return; }
+  _pendingCallback = callback;
+  document.getElementById('passwordInput').value = '';
+  document.getElementById('authError').textContent = '';
+  authModal.show();
+}
+
+function submitPassword() {
+  const pw = document.getElementById('passwordInput').value;
+  if (pw === ADMIN_PASSWORD) {
+    isAdmin = true;
+    sessionStorage.setItem('finance_admin', 'true');
+    authModal.hide();
+    updateAdminUI();
+    renderEntryTable();
+    renderStockTab();
+    if (_pendingCallback) { _pendingCallback(); _pendingCallback = null; }
+  } else {
+    document.getElementById('authError').textContent = '❌ 비밀번호가 틀렸습니다.';
+    document.getElementById('passwordInput').value = '';
+    document.getElementById('passwordInput').focus();
+  }
+}
+
+function toggleAdmin() {
+  if (isAdmin) {
+    if (confirm('관리자 모드를 종료하시겠습니까?')) {
+      isAdmin = false;
+      sessionStorage.removeItem('finance_admin');
+      updateAdminUI();
+      renderEntryTable();
+      renderStockTab();
+    }
+  } else {
+    requireAdmin(() => {});
+  }
+}
+
+// =====================================================
 // FIREBASE 초기화
 // =====================================================
 const firebaseConfig = {
@@ -409,15 +521,18 @@ let _stockData   = null;
 async function initData() {
   const status = document.getElementById('sync-status');
   try {
-    const [finSnap, stkSnap] = await Promise.all([
+    const [finSnap, stkSnap, stkDateSnap] = await Promise.all([
       db.ref('finance').get(),
       db.ref('stocks').get(),
+      db.ref('stockDate').get(),
     ]);
     const fin = finSnap.val();
     const stk = stkSnap.val();
+    const stkDate = stkDateSnap.val();
     _financeData = fin || JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
                        || { entries: JSON.parse(JSON.stringify(DEFAULT_2026)) };
     _stockData   = ensureArray(stk) || JSON.parse(localStorage.getItem(STOCK_KEY_LS) || '[]');
+    if (stkDate) localStorage.setItem('stockDate', stkDate);
     if (status) { status.textContent = '🟢 Firebase 연결됨'; status.style.color = '#16a34a'; }
   } catch (e) {
     console.warn('Firebase 연결 실패 — localStorage 사용:', e.message);
@@ -426,6 +541,70 @@ async function initData() {
     _stockData   = JSON.parse(localStorage.getItem(STOCK_KEY_LS) || '[]');
     if (status) { status.textContent = '🔴 오프라인 (로컬 저장)'; status.style.color = '#dc2626'; }
   }
+  // 기존 데이터 마이그레이션: snapshots 없으면 entries에서 생성
+  if (!_financeData.snapshots) {
+    _financeData.snapshots = [];
+    const allEntries = _financeData.entries || [];
+    const entryYears = [...new Set(allEntries.map(e => new Date(e.date).getFullYear()))].sort();
+    const historicalYears = HISTORICAL.map(h => h.year);
+    entryYears.filter(y => !historicalYears.includes(y)).forEach(y => {
+      const calc = calcYearSummary(allEntries, y);
+      const yEntries = allEntries.filter(e => new Date(e.date).getFullYear() === y);
+      const latestDate = yEntries.reduce((max, e) => (e.date > max ? e.date : max), yEntries[0].date);
+      _financeData.snapshots.push({
+        id: latestDate,
+        date: latestDate.replace(/-/g, '.'),
+        ...calc,
+        isHistorical: false
+      });
+    });
+    if (_financeData.snapshots.length > 0) saveData(_financeData);
+  }
+
+  // 글로벌 날짜 입력 초기화
+  const entries = _financeData.entries || [];
+  const latestDate = entries.length > 0
+    ? entries.map(e => e.date).filter(Boolean).sort().reverse()[0]
+    : new Date().toISOString().slice(0,10);
+  const finDateEl = document.getElementById('globalFinanceDate');
+  if (finDateEl && latestDate) {
+    finDateEl.value = latestDate.substring(0,10);
+    const yearFilter = document.getElementById('yearFilter');
+    if (yearFilter) yearFilter.value = latestDate.substring(0,4);
+  }
+
+  const stockDateEl = document.getElementById('globalStockDate');
+  const savedStockDate = localStorage.getItem('stockDate') || new Date().toISOString().slice(0,10);
+  if (stockDateEl) stockDateEl.value = savedStockDate;
+}
+
+function onGlobalFinanceDateChange(date) {
+  if (!date) return;
+  const year = date.substring(0, 4);
+  // yearFilter 숨겨져 있지만 값은 유지
+  const yearFilter = document.getElementById('yearFilter');
+  if (yearFilter) yearFilter.value = year;
+  // 같은 연도 항목들 날짜 일괄 변경
+  const data = loadData();
+  let changed = false;
+  data.entries = data.entries.map(e => {
+    if (e.date && e.date.substring(0,4) === year) {
+      changed = true;
+      return { ...e, date: date };
+    }
+    return e;
+  });
+  if (changed) {
+    saveData(data);
+    renderEntryTable();
+    updateMetricCards();
+  }
+}
+
+function onGlobalStockDateChange(date) {
+  if (!date) return;
+  localStorage.setItem('stockDate', date);
+  db.ref('stockDate').set(date).catch(() => {});
 }
 
 // Historical data (in 만원 - pre-calculated summaries)
@@ -492,57 +671,45 @@ function calcYearSummary(entries, year) {
   // 연금 + 퇴직금 합산
   result.연금 = filtered.filter(e => e.category === '연금' || e.category === '퇴직금')
                         .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0) / 10000;
-  result.총자산 = result.부동산 + result.연금 + result.유동자산 - result.부채;
+  result.총자산 = result.부동산 + result.연금 + result.유동자산 + result.부채;
   result.가용연금제외 = result.총자산 - result.연금;
   return result;
 }
 
 function getAllYearData(entries) {
-  // Collect all years from entries
-  const entryYears = [...new Set(entries.map(e => new Date(e.date).getFullYear()))].sort();
+  const data = loadData();
+  const snapshots = data.snapshots || [];
   const rows = [];
 
-  // Add historical data
+  // Add hardcoded historical rows
   HISTORICAL.forEach(h => {
     const r = { ...h };
-    r.총자산 = r.부동산 + r.연금 + r.유동자산 - r.부채;
+    r.총자산 = r.부동산 + r.연금 + r.유동자산 + r.부채;
     r.가용연금제외 = r.총자산 - r.연금;
+    r.isHistorical = true;
     rows.push(r);
   });
 
-  // Add entry-based years (only years not already in historical)
-  const historicalYears = HISTORICAL.map(h => h.year);
-  entryYears.forEach(y => {
-    // 해당 연도 항목 중 가장 최신 날짜를 표시 날짜로 사용
-    const yEntries = entries.filter(e => new Date(e.date).getFullYear() === y);
-    const latestDate = yEntries.reduce((max, e) => (e.date > max ? e.date : max), yEntries[0].date);
-    const displayDate = latestDate.replace(/-/g, '.');
+  // Add stored snapshots
+  snapshots.forEach(s => rows.push({ ...s, isHistorical: false }));
 
-    if (!historicalYears.includes(y)) {
-      const calc = calcYearSummary(entries, y);
-      rows.push({ date: displayDate, year: y, ...calc });
-    } else {
-      // Update historical year with entry data if entries exist
-      const idx = rows.findIndex(r => r.year === y);
-      if (idx !== -1 && yEntries.length > 0) {
-        const calc = calcYearSummary(entries, y);
-        rows[idx] = { date: displayDate, year: y, ...calc };
-      }
-    }
+  // Sort by date ascending
+  rows.sort((a, b) => {
+    const da = new Date(a.date.replace(/\./g, '-'));
+    const db = new Date(b.date.replace(/\./g, '-'));
+    return da - db;
   });
 
-  rows.sort((a, b) => a.year - b.year);
-
-  // Add year-over-year changes
+  // Add period-over-period changes
   rows.forEach((r, i) => {
     if (i === 0) {
       r.d총자산 = null; r.d부동산 = null; r.d부채 = null; r.d연금 = null; r.d유동자산 = null;
     } else {
       const prev = rows[i - 1];
-      r.d총자산 = r.총자산 - prev.총자산;
-      r.d부동산 = r.부동산 - prev.부동산;
-      r.d부채 = r.부채 - prev.부채;
-      r.d연금 = r.연금 - prev.연금;
+      r.d총자산   = r.총자산   - prev.총자산;
+      r.d부동산   = r.부동산   - prev.부동산;
+      r.d부채     = r.부채     - prev.부채;
+      r.d연금     = r.연금     - prev.연금;
       r.d유동자산 = r.유동자산 - prev.유동자산;
     }
   });
@@ -563,6 +730,15 @@ function fmtChange(v) {
   const cls = v > 0 ? 'positive' : (v < 0 ? 'negative' : 'text-muted');
   const sign = v > 0 ? '+' : '';
   return `<span class="${cls}">${sign}${fmt(v, 0)}</span>`;
+}
+
+function fmtUk(v) {
+  const n = Math.round(v);
+  const uk = Math.floor(n / 10000);
+  const man = n % 10000;
+  if (uk > 0 && man > 0) return `${uk.toLocaleString('ko-KR')}억${man.toLocaleString('ko-KR')}만`;
+  if (uk > 0) return `${uk.toLocaleString('ko-KR')}억`;
+  return `${man.toLocaleString('ko-KR')}만`;
 }
 
 function fmtWon(v) {
@@ -600,7 +776,7 @@ function renderEntryTable() {
 
   const tbody = document.getElementById('entryTbody');
   if (entries.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">데이터가 없습니다. "+ 항목 추가" 버튼으로 추가하세요.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">데이터가 없습니다. "+ 항목 추가" 버튼으로 추가하세요.</td></tr>';
     return;
   }
 
@@ -619,11 +795,6 @@ function renderEntryTable() {
         const am = aw / 10000;
         const amStr = am ? am.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : '-';
         html += `<tr data-id="${e.id}">
-          <td class="text-center">
-            <input type="date" class="cell-input" style="width:105px;text-align:center"
-              value="${e.date.substring(0,10)}"
-              onchange="updateField('${e.id}','date',this.value)">
-          </td>
           <td class="text-center" style="min-width:80px">
             <input class="cell-input" value="${e.category || ''}" onchange="updateField('${e.id}','category',this.value)" placeholder="분류">
           </td>
@@ -642,7 +813,7 @@ function renderEntryTable() {
               onchange="updateField('${e.id}','amount',this.value)">
           </td>
           <td class="text-end manwon-cell" id="mw-${e.id}">${amStr}</td>
-          <td class="text-center">
+          <td class="text-center admin-only">
             <button class="delete-btn" onclick="deleteEntry('${e.id}')" title="삭제">✕</button>
           </td>
         </tr>`;
@@ -651,12 +822,11 @@ function renderEntryTable() {
       // Subtotal row
       const catTotal = cEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
       html += `<tr style="font-weight:600;background:#f8fafc;" class="subtotal-row">
-        <td></td>
         <td class="text-center"><small>${catBadge(cat)} 소계</small></td>
         <td colspan="2"></td>
         <td class="text-end text-primary">${catTotal.toLocaleString('ko-KR')}</td>
         <td class="text-end text-primary">${(catTotal/10000).toLocaleString('ko-KR',{maximumFractionDigits:1})}</td>
-        <td colspan="3"></td>
+        <td class="admin-only"></td>
       </tr>`;
     });
   });
@@ -666,6 +836,7 @@ function renderEntryTable() {
 
 // Update a single field in-place (no full re-render — preserves focus)
 function updateField(id, field, value) {
+  if (!isAdmin) return;
   const data = loadData();
   const entry = data.entries.find(e => e.id === id);
   if (!entry) return;
@@ -743,6 +914,9 @@ function renderSummaryTable() {
   let html = '';
   rows.forEach((r, i) => {
     const isLatest = (i === rows.length - 1);
+    const deleteBtn = r.isHistorical
+      ? '<td class="admin-only"></td>'
+      : `<td class="text-center admin-only"><button class="btn btn-sm p-0 text-danger" onclick="deleteSummaryRow('${r.id}')" title="삭제">✕</button></td>`;
     html += `<tr class="${isLatest ? 'summary-row-total' : ''}">
       <td class="text-center fw-semibold">${r.date}</td>
       <td>${fmt(r.부동산)}</td>
@@ -756,6 +930,7 @@ function renderSummaryTable() {
       <td>${fmtChange(r.d부채)}</td>
       <td>${fmtChange(r.d연금)}</td>
       <td>${fmtChange(r.d유동자산)}</td>
+      ${deleteBtn}
     </tr>`;
   });
 
@@ -765,7 +940,8 @@ function renderSummaryTable() {
   if (rows.length > 0) {
     const latest = rows[rows.length - 1];
     renderCategoryBreakdown(latest);
-    renderOwnerBreakdown(data.entries, latest.year);
+    const latestYear = latest.year || parseInt(latest.date.substring(0, 4));
+    renderOwnerBreakdown(data.entries, latestYear);
   }
 }
 
@@ -776,11 +952,11 @@ function renderCategoryBreakdown(row) {
     { name: '유동자산', val: row.유동자산, color: '#f59e0b' },
     { name: '부채', val: row.부채, color: '#ef4444' },
   ];
-  const total = row.총자산;
+  const total = (row.부동산 || 0) + (row.연금 || 0) + (row.유동자산 || 0) + (row.부채 || 0);
 
   let html = '<table class="table table-sm"><tbody>';
   cats.forEach(c => {
-    const pct = total > 0 ? (c.val / (row.총자산 + row.부채) * 100) : 0;
+    const pct = total > 0 ? (c.val / total * 100) : 0;
     html += `<tr>
       <td><span class="badge badge-category cat-${c.name}">${c.name}</span></td>
       <td class="text-end fw-semibold">${fmt(c.val)} 만원</td>
@@ -843,7 +1019,7 @@ function renderCharts() {
     return {
       display: true,
       align, anchor,
-      formatter: v => v == null ? '' : fmt(Math.round(v)) + '만',
+      formatter: v => v == null ? '' : fmtUk(v),
       font: { size: 10, weight: '600' },
       color: extraColor || '#374151',
       backgroundColor: 'rgba(255,255,255,0.82)',
@@ -862,17 +1038,17 @@ function renderCharts() {
         {
           label: '총자산', data: rows.map(r => r.부동산 + r.연금 + r.유동자산),
           borderColor: '#1a3c6e', backgroundColor: 'rgba(26,60,110,0.1)', tension: 0.3, fill: true, pointRadius: 4,
-          datalabels: labelStyle('top', 'end'),
+          datalabels: { display: false },
         },
         {
           label: '가용자산(연금제외)', data: rows.map(r => r.가용연금제외),
           borderColor: '#2563eb', borderDash: [5,5], tension: 0.3, pointRadius: 4,
-          datalabels: { ...labelStyle('bottom', 'start'), offset: 4 },
+          datalabels: { display: false },
         },
         {
           label: '부채', data: rows.map(r => r.부채),
           borderColor: '#dc2626', borderDash: [3,3], tension: 0.3, pointRadius: 4,
-          datalabels: { ...labelStyle('top', 'end', '#dc2626'), offset: 4 },
+          datalabels: { display: false },
         },
       ]
     },
@@ -881,9 +1057,10 @@ function renderCharts() {
       layout: { padding: { top: 28, bottom: 8, left: 4, right: 10 } },
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
-        datalabels: { display: false }, // chart-level default off; each dataset opts in
+        datalabels: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtUk(ctx.parsed.y)}` } },
       },
-      scales: { y: { ticks: { callback: v => fmt(v) + '만' } } }
+      scales: { y: { ticks: { callback: v => fmtUk(v) } } }
     }
   });
 
@@ -905,12 +1082,12 @@ function renderCharts() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'right', labels: { font: { size: 11 }, padding: 10 } },
-        tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmt(ctx.parsed) + ' 만원' } },
+        tooltip: { callbacks: { label: ctx => ctx.label + ': ' + fmtUk(ctx.parsed) } },
         datalabels: {
           display: ctx => pieTotal > 0 && (ctx.dataset.data[ctx.dataIndex] / pieTotal) >= 0.05,
           formatter: (v) => {
             const pct = pieTotal > 0 ? (v / pieTotal * 100).toFixed(1) : 0;
-            return fmt(Math.round(v)) + '만\n(' + pct + '%)';
+            return fmtUk(v) + '\n(' + pct + '%)';
           },
           color: '#fff',
           font: { size: 11, weight: 'bold' },
@@ -930,17 +1107,17 @@ function renderCharts() {
         {
           label: '부동산', data: rows.map(r => r.부동산),
           borderColor: '#3b82f6', tension: 0.3, pointRadius: 4,
-          datalabels: labelStyle('top', 'end'),
+          datalabels: { display: false },
         },
         {
           label: '연금', data: rows.map(r => r.연금),
           borderColor: '#10b981', tension: 0.3, pointRadius: 4,
-          datalabels: { ...labelStyle('bottom', 'start'), offset: 4 },
+          datalabels: { display: false },
         },
         {
           label: '유동자산', data: rows.map(r => r.유동자산),
           borderColor: '#f59e0b', tension: 0.3, pointRadius: 4,
-          datalabels: { ...labelStyle('top', 'end'), offset: 4 },
+          datalabels: { display: false },
         },
       ]
     },
@@ -949,9 +1126,10 @@ function renderCharts() {
       layout: { padding: { top: 28, bottom: 8, left: 4, right: 10 } },
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
-        datalabels: { display: false }, // chart-level default off; each dataset opts in
+        datalabels: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtUk(ctx.parsed.y)}` } },
       },
-      scales: { y: { ticks: { callback: v => fmt(v) + '만' } } }
+      scales: { y: { ticks: { callback: v => fmtUk(v) } } }
     }
   });
 
@@ -963,15 +1141,15 @@ function renderCharts() {
       labels,
       datasets: [
         {
-          label: '총자산', data: rows.map(r => r.총자산), backgroundColor: '#2563eb',
+          label: '순자산', data: rows.map(r => r.총자산), backgroundColor: '#2563eb',
           datalabels: { display: true, anchor: 'end', align: 'end',
-            formatter: v => fmt(Math.round(v)) + '만', font: { size: 10, weight: '600' }, color: '#1a3c6e',
+            formatter: v => fmtUk(v), font: { size: 10, weight: '600' }, color: '#1a3c6e',
             backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 3, padding: { top:1,bottom:1,left:3,right:3 } }
         },
         {
           label: '부채', data: rows.map(r => r.부채), backgroundColor: '#ef4444',
           datalabels: { display: true, anchor: 'end', align: 'end',
-            formatter: v => fmt(Math.round(v)) + '만', font: { size: 10, weight: '600' }, color: '#dc2626',
+            formatter: v => fmtUk(v), font: { size: 10, weight: '600' }, color: '#dc2626',
             backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 3, padding: { top:1,bottom:1,left:3,right:3 } }
         },
       ]
@@ -981,9 +1159,10 @@ function renderCharts() {
       layout: { padding: { top: 32, bottom: 8 } },
       plugins: {
         legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } },
-        datalabels: { display: false }, // chart-level default off; each dataset opts in
+        datalabels: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtUk(ctx.parsed.y)}` } },
       },
-      scales: { y: { ticks: { callback: v => fmt(v) + '만' } } }
+      scales: { y: { ticks: { callback: v => fmtUk(v) } } }
     }
   });
 }
@@ -1019,6 +1198,7 @@ function updateMetricCards() {
 // CLEAR ALL
 // =====================================================
 function clearAllFinanceData() {
+  if (!isAdmin) { requireAdmin(clearAllFinanceData); return; }
   const data = loadData();
   if (!confirm(`⚠️ 자산 입력 목록 ${data.entries.length}개를 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`)) return;
   const empty = { entries: [] };
@@ -1030,11 +1210,54 @@ function clearAllFinanceData() {
 }
 
 function clearAllStockData() {
+  if (!isAdmin) { requireAdmin(clearAllStockData); return; }
   const stocks = loadStockData();
   if (!confirm(`⚠️ 주식 현황 목록 ${stocks.length}개를 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`)) return;
   _stockData = [];
   saveStockData([]);
   renderStockTab();
+}
+
+// =====================================================
+// EXPORT / IMPORT — 총자산 현황
+// =====================================================
+function deleteSummaryRow(id) {
+  if (!confirm('이 행을 삭제하시겠습니까?')) return;
+  const data = loadData();
+  data.snapshots = (data.snapshots || []).filter(s => s.id !== id);
+  saveData(data);
+  renderSummaryTable();
+  renderCharts();
+  updateMetricCards();
+}
+
+function exportSummaryData() {
+  const data = loadData();
+  const snapshots = data.snapshots || [];
+  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const blob = new Blob([JSON.stringify({ snapshots }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `summary_backup_${date}.json`; a.click();
+}
+
+function importSummaryData(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.snapshots || !Array.isArray(parsed.snapshots)) throw new Error('형식 오류');
+      if (!confirm(`📂 ${parsed.snapshots.length}개 행을 불러옵니다.\n현재 총자산 현황이 교체됩니다. 계속하시겠습니까?`)) return;
+      const data = loadData();
+      data.snapshots = parsed.snapshots;
+      saveData(data);
+      renderSummaryTable();
+      renderCharts();
+      updateMetricCards();
+      alert('✅ 총자산 현황을 불러왔습니다.');
+    } catch { alert('❌ 올바른 백업 파일이 아닙니다.'); }
+  };
+  reader.readAsText(file);
 }
 
 // =====================================================
@@ -1103,6 +1326,33 @@ function importStockData(file) {
 // CALCULATE (main action)
 // =====================================================
 function recalculate() {
+  const data = loadData();
+  const globalDate = document.getElementById('globalFinanceDate').value || new Date().toISOString().slice(0,10);
+  const displayDate = globalDate.replace(/-/g, '.');
+  const year = parseInt(globalDate.substring(0, 4));
+
+  const calc = calcYearSummary(data.entries, year);
+  const snapshot = {
+    id: globalDate,
+    date: displayDate,
+    부동산: calc.부동산,
+    부채: calc.부채,
+    연금: calc.연금,
+    유동자산: calc.유동자산,
+    총자산: calc.총자산,
+    가용연금제외: calc.가용연금제외,
+    isHistorical: false
+  };
+
+  if (!data.snapshots) data.snapshots = [];
+  const idx = data.snapshots.findIndex(s => s.date === displayDate);
+  if (idx >= 0) {
+    data.snapshots[idx] = snapshot;
+  } else {
+    data.snapshots.push(snapshot);
+  }
+  saveData(data);
+
   renderEntryTable();
   renderSummaryTable();
   renderCharts();
@@ -1123,9 +1373,9 @@ function recalculate() {
 // =====================================================
 let addModal;
 function showAddModal() {
+  if (!isAdmin) { requireAdmin(showAddModal); return; }
   editingId = null;
   document.getElementById('modalTitle').textContent = '항목 추가';
-  document.getElementById('inp-date').value = '2026-01-01';
   document.getElementById('inp-category').value = '부동산';
   document.getElementById('inp-item').value = '';
   document.getElementById('inp-owner').value = '';
@@ -1146,8 +1396,9 @@ function updateAmountPreview() {
 }
 
 function saveEntry() {
+  const globalDate = document.getElementById('globalFinanceDate').value || new Date().toISOString().slice(0,10);
   const entry = {
-    date: document.getElementById('inp-date').value,
+    date: globalDate,
     category: document.getElementById('inp-category').value,
     item: document.getElementById('inp-item').value.trim(),
     owner: document.getElementById('inp-owner').value.trim(),
@@ -1174,6 +1425,7 @@ function saveEntry() {
 }
 
 function deleteEntry(id) {
+  if (!isAdmin) { requireAdmin(() => deleteEntry(id)); return; }
   if (!confirm('이 항목을 삭제하시겠습니까?')) return;
   const data = loadData();
   data.entries = data.entries.filter(e => e.id !== id);
@@ -1209,6 +1461,7 @@ function calcStockTotal(s) {
 }
 
 function addStockEntry() {
+  if (!isAdmin) { requireAdmin(addStockEntry); return; }
   const stocks = loadStockData();
   stocks.push({
     id: 'stk_' + Date.now(),
@@ -1226,7 +1479,64 @@ function addStockEntry() {
   }, 50);
 }
 
+function importStockSummaryToFinance() {
+  if (!isAdmin) { requireAdmin(importStockSummaryToFinance); return; }
+
+  const stocks = loadStockData();
+  if (!stocks.length) { alert('주식 데이터가 없습니다.'); return; }
+
+  // 유동자산, 연금 분류를 소유자별로 합산
+  const targets = ['유동자산', '연금'];
+  const catOwnerTotals = {}; // { '유동자산|김민성': 123, ... }
+  stocks.forEach(s => {
+    const cat = s.category || '';
+    const owner = s.owner || '기타';
+    if (targets.includes(cat)) {
+      const total = (parseFloat(s.shares) || 0) * (parseFloat(s.price) || 0);
+      const key = cat + '|' + owner;
+      catOwnerTotals[key] = (catOwnerTotals[key] || 0) + total;
+    }
+  });
+
+  if (!Object.keys(catOwnerTotals).length) {
+    alert('유동자산 또는 연금 분류의 주식 데이터가 없습니다.');
+    return;
+  }
+
+  const date = document.getElementById('globalFinanceDate')?.value || new Date().toISOString().slice(0, 10);
+  const data = loadData();
+  const addedLines = [];
+
+  targets.forEach(cat => {
+    Object.entries(catOwnerTotals)
+      .filter(([key]) => key.startsWith(cat + '|'))
+      .forEach(([key, total]) => {
+        const owner = key.split('|')[1];
+        data.entries.push({
+          id: 'stock_' + cat + '_' + owner + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          date: date,
+          category: cat,
+          item: cat + ' (주식)',
+          owner: owner,
+          amount: Math.round(total)
+        });
+        addedLines.push(`${cat} / ${owner}: ${Math.round(total/10000).toLocaleString('ko-KR')}만원`);
+      });
+  });
+
+  saveData(data);
+  renderEntryTable();
+  updateMetricCards();
+
+  // 자산 입력 탭으로 이동
+  const tabBtn = document.querySelector('[data-bs-target="#tab-input"]');
+  if (tabBtn) tabBtn.click();
+
+  alert(`자산 입력에 추가되었습니다.\n${addedLines.join('\n')}`);
+}
+
 function deleteStockEntry(id) {
+  if (!isAdmin) { requireAdmin(() => deleteStockEntry(id)); return; }
   const stocks = loadStockData().filter(s => s.id !== id);
   saveStockData(stocks);
   renderStockTab();
@@ -1252,6 +1562,7 @@ function updateStockDataLists(stocks) {
 }
 
 function updateStockField(id, field, value) {
+  if (!isAdmin) return;
   const stocks = loadStockData();
   const s = stocks.find(x => x.id === id);
   if (!s) return;
@@ -1372,7 +1683,7 @@ function renderStockTab() {
       <td style="text-align:right"><input class="cell-input" style="text-align:right" type="number" value="${s.price || ''}" oninput="updateStockField('${s.id}','price',this.value)" placeholder="0"></td>
       <td style="text-align:right;font-weight:600;color:#1a3c6e" id="stock-total-${s.id}">${fmt(Math.round(total))}</td>
       <td><input class="cell-input" list="stock-dl-broker" lang="ko" value="${s.broker || ''}" onchange="updateStockField('${s.id}','broker',this.value)" placeholder="증권사"></td>
-      <td style="text-align:center"><button class="delete-btn" onclick="deleteStockEntry('${s.id}')">✕</button></td>
+      <td style="text-align:center" class="admin-only"><button class="delete-btn" onclick="deleteStockEntry('${s.id}')">✕</button></td>
     </tr>`;
   }).join('');
 
@@ -1513,7 +1824,9 @@ async function importData(event) {
 // INIT
 // =====================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  addModal = new bootstrap.Modal(document.getElementById('addModal'));
+  addModal  = new bootstrap.Modal(document.getElementById('addModal'));
+  authModal = new bootstrap.Modal(document.getElementById('authModal'));
+  updateAdminUI();
 
   // Current date
   const now = new Date();
