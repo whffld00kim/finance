@@ -131,11 +131,18 @@
       <label class="btn btn-sm btn-outline-light py-0 mb-0 admin-only" style="font-size:0.75rem;cursor:pointer;" title="JSON 파일을 불러와 서버에 저장">
         📂 복원<input type="file" accept=".json" onchange="importData(event)" style="display:none">
       </label>
+      <button onclick="enterDemoMode()" id="demoBtn" class="btn btn-sm btn-warning py-0 admin-only" style="font-size:0.75rem;" title="가상 데이터로 데모 화면 보기">🎭 데모</button>
       <button onclick="toggleAdmin()" id="lockBtn" class="btn lock-btn btn-outline-light">🔒 잠김</button>
       <span class="text-white" style="font-size:0.82rem;" id="currentDateDisplay"></span>
     </div>
   </div>
 </nav>
+
+<!-- 데모 모드 배너 -->
+<div id="demoBanner" style="display:none;background:#ff6b00;color:#fff;text-align:center;padding:8px 16px;font-weight:700;font-size:0.95rem;position:sticky;top:0;z-index:999;">
+  🎭 데모 모드 — 가상 데이터가 표시되고 있습니다.
+  <button onclick="exitDemoMode()" class="admin-only" style="margin-left:16px;background:#fff;color:#ff6b00;border:none;border-radius:6px;padding:2px 14px;font-weight:700;cursor:pointer;">← 복귀</button>
+</div>
 
 <div class="container-fluid mt-3 px-4">
 
@@ -625,6 +632,79 @@ const DEFAULT_2026 = [
 let editingId = null;
 let trendChart = null, pieChart = null, categoryChart = null, barChart = null;
 
+// =====================================================
+// 데모 모드
+// =====================================================
+let _demoMode = false;
+let _realDataBackup = null;
+let _realStockBackup = null;
+
+const DEMO_FINANCE = {
+  date: '2026-03-21',
+  entries: [
+    { id:'d1', date:'2026-03-21', category:'부동산', item:'아파트 전세금',   owner:'통합',  amount: 35000000 },
+    { id:'d2', date:'2026-03-21', category:'부동산', item:'상가 보증금',     owner:'통합',  amount: 8000000  },
+    { id:'d3', date:'2026-03-21', category:'부채',   item:'전세자금대출',    owner:'본인',  amount: 15000000 },
+    { id:'d4', date:'2026-03-21', category:'부채',   item:'개인신용대출',    owner:'본인',  amount: 3500000  },
+    { id:'d5', date:'2026-03-21', category:'부채',   item:'카드론',          owner:'배우자',amount: 800000   },
+    { id:'d6', date:'2026-03-21', category:'연금',   item:'퇴직연금(IRP)',   owner:'본인',  amount: 24500000 },
+    { id:'d7', date:'2026-03-21', category:'연금',   item:'퇴직연금(IRP)',   owner:'배우자',amount: 7800000  },
+    { id:'d8', date:'2026-03-21', category:'연금',   item:'개인연금',        owner:'본인',  amount: 5200000  },
+    { id:'d9', date:'2026-03-21', category:'연금',   item:'개인연금',        owner:'배우자',amount: 3100000  },
+    { id:'d10',date:'2026-03-21', category:'유동자산',item:'예금·적금',      owner:'본인',  amount: 12000000 },
+    { id:'d11',date:'2026-03-21', category:'유동자산',item:'예금·적금',      owner:'배우자',amount: 5000000  },
+    { id:'d12',date:'2026-03-21', category:'유동자산',item:'주식·펀드',      owner:'본인',  amount: 8500000  },
+    { id:'d13',date:'2026-03-21', category:'유동자산',item:'주식·펀드',      owner:'배우자',amount: 3200000  },
+    { id:'d14',date:'2026-03-21', category:'유동자산',item:'현금·CMA',       owner:'본인',  amount: 1800000  },
+  ],
+  snapshots: [
+    { id:'s1', date:'2023.01.01', 부동산:2000, 부채:850,  연금:2350, 유동자산:480,  isHistorical:true },
+    { id:'s2', date:'2024.01.01', 부동산:2500, 부채:1020, 연금:2870, 유동자산:920,  isHistorical:true },
+    { id:'s3', date:'2025.01.01', 부동산:3000, 부채:1380, 연금:3550, 유동자산:1850, isHistorical:true },
+    { id:'s4', date:'2026.03.21', 부동산:4300, 부채:1930, 연금:4060, 유동자산:3050, isHistorical:false },
+  ]
+};
+
+const DEMO_STOCKS = [
+  { id:'ds1', owner:'본인',  country:'한국', category:'유동자산', account:'위탁',    stockName:'삼성전자',       shares:50,  price:58000,  broker:'키움증권' },
+  { id:'ds2', owner:'본인',  country:'한국', category:'유동자산', account:'위탁',    stockName:'SK하이닉스',     shares:8,   price:180000, broker:'키움증권' },
+  { id:'ds3', owner:'본인',  country:'미국', category:'유동자산', account:'위탁',    stockName:'Apple',          shares:3,   price:245000, broker:'키움증권' },
+  { id:'ds4', owner:'본인',  country:'미국', category:'유동자산', account:'위탁',    stockName:'NVIDIA',         shares:2,   price:138000, broker:'키움증권' },
+  { id:'ds5', owner:'본인',  country:'한국', category:'연금',    account:'개인연금', stockName:'KODEX 200',      shares:20,  price:38500,  broker:'삼성증권' },
+  { id:'ds6', owner:'본인',  country:'미국', category:'연금',    account:'개인연금', stockName:'S&P500 ETF',     shares:15,  price:95000,  broker:'삼성증권' },
+  { id:'ds7', owner:'배우자',country:'한국', category:'유동자산', account:'위탁',    stockName:'NAVER',          shares:4,   price:210000, broker:'미래에셋' },
+  { id:'ds8', owner:'배우자',country:'한국', category:'유동자산', account:'위탁',    stockName:'카카오',         shares:12,  price:48000,  broker:'미래에셋' },
+  { id:'ds9', owner:'배우자',country:'한국', category:'연금',    account:'개인연금', stockName:'TIGER 배당성장', shares:30,  price:28000,  broker:'미래에셋' },
+];
+
+function enterDemoMode() {
+  _demoMode = true;
+  _realDataBackup = _financeData;
+  _realStockBackup = _stockData;
+  _financeData = JSON.parse(JSON.stringify(DEMO_FINANCE));
+  _stockData   = JSON.parse(JSON.stringify(DEMO_STOCKS));
+  document.getElementById('demoBanner').style.display = 'block';
+  document.getElementById('demoBtn').classList.add('d-none');
+  renderAll();
+}
+
+function exitDemoMode() {
+  _demoMode = false;
+  _financeData = _realDataBackup;
+  _stockData   = _realStockBackup;
+  document.getElementById('demoBanner').style.display = 'none';
+  document.getElementById('demoBtn').classList.remove('d-none');
+  renderAll();
+}
+
+function renderAll() {
+  renderEntryTable();
+  updateMetricCards();
+  renderSummaryTable();
+  renderCharts();
+  renderStockTab();
+}
+
 function loadData() {
   if (!_financeData) {
     _financeData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
@@ -634,6 +714,7 @@ function loadData() {
 }
 
 function saveData(data) {
+  if (_demoMode) return; // 데모 모드에서는 저장 안 함
   _financeData = data;
   db.ref('finance').set(data).then(() => {
     const s = document.getElementById('sync-status');
@@ -673,17 +754,26 @@ function getAllYearData(entries) {
   const snapshots = data.snapshots || [];
   const rows = [];
 
-  // Add hardcoded historical rows
-  HISTORICAL.forEach(h => {
-    const r = { ...h };
-    r.총자산 = r.부동산 + r.연금 + r.유동자산 + r.부채;
-    r.가용연금제외 = r.총자산 - r.연금;
-    r.isHistorical = true;
-    rows.push(r);
-  });
-
-  // Add stored snapshots
-  snapshots.forEach(s => rows.push({ ...s, isHistorical: false }));
+  if (_demoMode) {
+    // 데모 모드: 하드코딩 HISTORICAL 대신 데모 스냅샷 사용
+    snapshots.forEach(s => {
+      const r = { ...s };
+      r.총자산 = r.부동산 + r.연금 + r.유동자산 + r.부채;
+      r.가용연금제외 = r.총자산 - r.연금;
+      rows.push(r);
+    });
+  } else {
+    // 일반 모드: 하드코딩 HISTORICAL 사용
+    HISTORICAL.forEach(h => {
+      const r = { ...h };
+      r.총자산 = r.부동산 + r.연금 + r.유동자산 + r.부채;
+      r.가용연금제외 = r.총자산 - r.연금;
+      r.isHistorical = true;
+      rows.push(r);
+    });
+    // Add stored snapshots
+    snapshots.forEach(s => rows.push({ ...s, isHistorical: false }));
+  }
 
   // Sort by date ascending
   rows.sort((a, b) => {
@@ -1439,6 +1529,7 @@ function loadStockData() {
 }
 
 function saveStockData(stocks) {
+  if (_demoMode) return; // 데모 모드에서는 저장 안 함
   _stockData = stocks;
   db.ref('stocks').set(stocks).catch(() => {
     localStorage.setItem(STOCK_KEY, JSON.stringify(stocks));
