@@ -169,10 +169,10 @@
               <option value="2024">2024년</option>
               <option value="2023">2023년</option>
             </select>
-            <label class="text-muted small mb-0">기준일</label>
-            <input type="date" id="globalFinanceDate" class="form-control form-control-sm" style="width:145px;"
+            <label class="text-muted small mb-0 admin-only">기준일</label>
+            <input type="date" id="globalFinanceDate" class="form-control form-control-sm admin-only" style="width:145px;"
               onchange="onGlobalFinanceDateChange(this.value)">
-            <div class="vr mx-1"></div>
+            <div class="vr mx-1 admin-only"></div>
             <button class="btn btn-sm btn-outline-danger admin-only" onclick="clearAllFinanceData()">🗑 <span class="d-none d-sm-inline">전체 삭제</span></button>
             <button class="btn btn-sm btn-outline-primary admin-only" onclick="showAddModal()">+ <span class="d-none d-sm-inline">항목 추가</span></button>
             <button class="btn btn-sm btn-calc admin-only" onclick="recalculate()">🔄 <span class="d-none d-sm-inline">계산</span></button>
@@ -279,10 +279,10 @@
         <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-2 gap-2">
           <div class="section-title mb-0">■ 주식 보유 현황</div>
           <div class="d-flex flex-wrap gap-1 align-items-center">
-            <label class="text-muted small mb-0">기준일</label>
-            <input type="date" id="globalStockDate" class="form-control form-control-sm" style="width:145px;"
+            <label class="text-muted small mb-0 admin-only">기준일</label>
+            <input type="date" id="globalStockDate" class="form-control form-control-sm admin-only" style="width:145px;"
               onchange="onGlobalStockDateChange(this.value)">
-            <div class="vr mx-1"></div>
+            <div class="vr mx-1 admin-only"></div>
             <button class="btn btn-sm btn-outline-danger admin-only" onclick="clearAllStockData()">🗑 <span class="d-none d-sm-inline">전체 삭제</span></button>
             <button class="btn btn-sm btn-outline-primary admin-only" onclick="addStockEntry()">+ <span class="d-none d-sm-inline">항목 추가</span></button>
           </div>
@@ -814,8 +814,7 @@ function renderEntryTable() {
       // Subtotal row
       const catTotal = cEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
       html += `<tr style="font-weight:600;background:#f8fafc;" class="subtotal-row">
-        <td class="text-center"><small>${catBadge(cat)} 소계</small></td>
-        <td colspan="2"></td>
+        <td colspan="3" class="text-center"><small>${catBadge(cat)} 소계</small></td>
         <td class="text-end text-primary">${catTotal.toLocaleString('ko-KR')}</td>
         <td class="text-end text-primary">${(catTotal/10000).toLocaleString('ko-KR',{maximumFractionDigits:1})}</td>
         <td class="admin-only"></td>
