@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 배경 -->
+  <rect width="512" height="512" rx="100" fill="#1a3c6e"/>
+
+  <!-- 막대 그래프 (상승 추이) -->
+  <rect x="80"  y="310" width="70" height="120" rx="10" fill="#60a5fa"/>
+  <rect x="195" y="240" width="70" height="190" rx="10" fill="#93c5fd"/>
+  <rect x="310" y="160" width="70" height="270" rx="10" fill="#bfdbfe"/>
+
+  <!-- 상승 화살표 선 -->
+  <polyline points="115,290 230,210 345,130" stroke="#ffffff" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 화살표 머리 -->
+  <polygon points="345,130 310,140 330,165" fill="#ffffff"/>
+
+  <!-- 원화 기호 -->
+  <text x="390" y="110" font-family="Arial,sans-serif" font-size="90" font-weight="bold" fill="#facc15">₩</text>
+
+  <!-- 하단 텍스트 -->
+  <text x="256" y="480" font-family="Arial,sans-serif" font-size="44" font-weight="bold" fill="#ffffff" text-anchor="middle">재무현황</text>
+</svg>
