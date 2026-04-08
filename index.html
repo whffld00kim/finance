@@ -125,9 +125,60 @@
   body.viewer-mode .delete-btn { display: none; }
   .lock-btn { font-size: 0.78rem; padding: 2px 10px; border-radius: 20px; font-weight: 600; transition: all 0.2s; }
 
+  /* ── 접속 잠금 화면 ── */
+  #appLockScreen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, #0f2044 0%, #1a3c6e 60%, #2563eb 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #appLockScreen .lock-card {
+    background: #fff; border-radius: 18px; padding: 2.5rem 2rem;
+    width: 100%; max-width: 360px; box-shadow: 0 8px 40px rgba(0,0,0,0.35);
+    text-align: center;
+  }
+  #appLockScreen .lock-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+  #appLockScreen .lock-title { font-size: 1.25rem; font-weight: 700; color: #1a3c6e; margin-bottom: 0.2rem; }
+  #appLockScreen .lock-sub { font-size: 0.82rem; color: #888; margin-bottom: 1.5rem; }
+  #appLockScreen .lock-input {
+    width: 100%; padding: 0.65rem 1rem; border: 2px solid #e2e8f0; border-radius: 10px;
+    font-size: 1.1rem; text-align: center; letter-spacing: 0.25em;
+    outline: none; transition: border-color 0.2s;
+  }
+  #appLockScreen .lock-input:focus { border-color: #2563eb; }
+  #appLockScreen .lock-input.shake {
+    animation: lockShake 0.35s ease;
+    border-color: #dc2626 !important;
+  }
+  #appLockScreen .lock-error { font-size: 0.82rem; color: #dc2626; margin-top: 0.5rem; min-height: 1.2em; }
+  #appLockScreen .lock-btn-submit {
+    width: 100%; margin-top: 1rem; padding: 0.65rem;
+    background: #1a3c6e; color: #fff; border: none; border-radius: 10px;
+    font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s;
+  }
+  #appLockScreen .lock-btn-submit:hover { background: #2563eb; }
+  @keyframes lockShake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-8px); }
+    40%,80% { transform: translateX(8px); }
+  }
+
 </style>
 </head>
 <body>
+
+<!-- ── 접속 잠금 화면 ── -->
+<div id="appLockScreen">
+  <div class="lock-card">
+    <div class="lock-icon">🔐</div>
+    <div class="lock-title">재무현황 관리 시스템</div>
+    <div class="lock-sub">접속하려면 비밀번호를 입력하세요</div>
+    <input type="password" id="lockInput" class="lock-input" placeholder="••••"
+      maxlength="20" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')submitLockScreen()">
+    <div class="lock-error" id="lockError"></div>
+    <button class="lock-btn-submit" onclick="submitLockScreen()">확인</button>
+  </div>
+</div>
 
 <nav class="navbar navbar-dark" style="background:var(--primary);">
   <div class="container-fluid flex-wrap gap-2">
@@ -525,9 +576,37 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
 // =====================================================
+// 접속 잠금 화면
+// =====================================================
+const VIEW_PASSWORD = '0409'; // ← 열람 비밀번호 (일반 접속용)
+
+function submitLockScreen() {
+  const input = document.getElementById('lockInput');
+  const pw = input.value;
+  if (pw === VIEW_PASSWORD || pw === ADMIN_PASSWORD) {
+    sessionStorage.setItem('finance_view_auth', 'true');
+    document.getElementById('appLockScreen').style.display = 'none';
+    input.value = '';
+    // 어드민 비밀번호로 입력 시 바로 관리자 모드 진입
+    if (pw === ADMIN_PASSWORD) {
+      isAdmin = true;
+      sessionStorage.setItem('finance_admin', 'true');
+      updateAdminUI();
+    }
+  } else {
+    const err = document.getElementById('lockError');
+    err.textContent = '비밀번호가 틀렸습니다.';
+    input.classList.add('shake');
+    input.value = '';
+    setTimeout(() => { input.classList.remove('shake'); err.textContent = ''; }, 1000);
+    input.focus();
+  }
+}
+
+// =====================================================
 // 관리자 인증
 // =====================================================
-const ADMIN_PASSWORD = '1234'; // ← 비밀번호 변경 시 이 값을 수정하세요
+const ADMIN_PASSWORD = '0409'; // ← 비밀번호 변경 시 이 값을 수정하세요
 let isAdmin = sessionStorage.getItem('finance_admin') === 'true';
 let authModal;
 let _pendingCallback = null;
@@ -2138,6 +2217,25 @@ async function importData(event) {
 document.addEventListener('DOMContentLoaded', async () => {
   addModal  = new bootstrap.Modal(document.getElementById('addModal'));
   authModal = new bootstrap.Modal(document.getElementById('authModal'));
+
+  // 접속 잠금 화면 처리
+  if (sessionStorage.getItem('finance_view_auth') === 'true') {
+    document.getElementById('appLockScreen').style.display = 'none';
+  } else {
+    // 잠금 화면이 보이는 동안 배경 스크롤 방지
+    document.body.style.overflow = 'hidden';
+    document.getElementById('appLockScreen').style.display = 'flex';
+    setTimeout(() => document.getElementById('lockInput').focus(), 100);
+    // 인증될 때까지 대기 후 스크롤 복원
+    const observer = new MutationObserver(() => {
+      if (document.getElementById('appLockScreen').style.display === 'none') {
+        document.body.style.overflow = '';
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.getElementById('appLockScreen'), { attributes: true, attributeFilter: ['style'] });
+  }
+
   updateAdminUI();
 
   // Current date
