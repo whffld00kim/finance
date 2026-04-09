@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finance-v1';
+const CACHE_NAME = 'finance-v20260410';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -16,38 +16,37 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
+// 활성화: 이전 캐시 삭제 후 클라이언트 즉시 장악
+// → controllerchange 이벤트 발생 → 페이지 자동 새로고침
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
-  // Firebase 및 외부 API 요청은 캐시하지 않음 (항상 네트워크 우선)
+  // Firebase 및 외부 API 요청은 항상 네트워크 사용
   if (event.request.url.includes('firebaseio.com') ||
       event.request.url.includes('googleapis.com') ||
       event.request.url.includes('firebase')) {
     return;
   }
 
+  // 네트워크 우선: 네트워크 성공 시 캐시 갱신, 실패 시 캐시 사용
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (!response || response.status !== 200 || response.type === 'opaque') {
-          return response;
+    fetch(event.request)
+      .then(response => {
+        if (response && response.status === 200 && response.type !== 'opaque') {
+          const cloned = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
         }
-        const cloned = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, cloned));
         return response;
-      });
-    }).catch(() => {
-      if (event.request.destination === 'document') {
-        return caches.match('./index.html');
-      }
-    })
+      })
+      .catch(() => caches.match(event.request).then(cached => {
+        if (cached) return cached;
+        if (event.request.destination === 'document') return caches.match('./index.html');
+      }))
   );
 });
