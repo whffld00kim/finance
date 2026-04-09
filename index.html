@@ -209,7 +209,7 @@
     <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">순 자산</div><div class="metric-value" id="m-total">-</div><div class="metric-change" id="m-total-chg"></div></div></div>
     <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">가용자산 (연금제외)</div><div class="metric-value" id="m-avail">-</div><div class="metric-change" id="m-avail-chg"></div></div></div>
     <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">총 부채</div><div class="metric-value text-danger" id="m-debt">-</div><div class="metric-change" id="m-debt-chg"></div></div></div>
-    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">순자산 (연금제외)</div><div class="metric-value" id="m-net">-</div><div class="metric-change" id="m-net-chg"></div></div></div>
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">연금자산</div><div class="metric-value" id="m-net">-</div><div class="metric-change" id="m-net-chg"></div></div></div>
   </div>
 
   <!-- Tabs -->
@@ -794,6 +794,7 @@ const HISTORICAL = [
   { date: '2023.01.01', year: 2023, 부동산: 23500, 부채: 4572,    연금: 25331,    유동자산: 2041,     isHistorical: true },
   { date: '2024.01.01', year: 2024, 부동산: 23500, 부채: 2657.95, 연금: 30873.63, 유동자산: 8467.71,  isHistorical: true },
   { date: '2025.01.01', year: 2025, 부동산: 24297, 부채: 3230.55, 연금: 36292.60, 유동자산: 20973.91, isHistorical: true },
+  { date: '2026.01.01', year: 2026, 부동산: 42192, 부채: 20181,   연금: 48658,    유동자산: 29458,    isHistorical: true },
 ];
 
 // Default 2026 raw entries (in 원)
@@ -928,7 +929,8 @@ function calcYearSummary(entries, year) {
   result.연금 = filtered.filter(e => e.category === '연금' || e.category === '퇴직금')
                         .reduce((s, e) => s + (parseFloat(e.amount) || 0), 0) / 10000;
   result.총자산 = result.부동산 + result.연금 + result.유동자산 + result.부채;
-  result.가용연금제외 = result.총자산 - result.연금;
+  result.순자산 = result.부동산 + result.연금 + result.유동자산 - result.부채;
+  result.가용연금제외 = result.순자산 - result.연금;
   return result;
 }
 
@@ -942,7 +944,8 @@ function getAllYearData(entries) {
     snapshots.forEach(s => {
       const r = { ...s };
       r.총자산 = r.부동산 + r.연금 + r.유동자산 + r.부채;
-      r.가용연금제외 = r.총자산 - r.연금;
+      r.순자산 = r.부동산 + r.연금 + r.유동자산 - r.부채;
+      r.가용연금제외 = r.순자산 - r.연금;
       rows.push(r);
     });
   } else {
@@ -950,12 +953,19 @@ function getAllYearData(entries) {
     HISTORICAL.forEach(h => {
       const r = { ...h };
       r.총자산 = r.부동산 + r.연금 + r.유동자산 + r.부채;
-      r.가용연금제외 = r.총자산 - r.연금;
+      r.순자산 = r.부동산 + r.연금 + r.유동자산 - r.부채;
+      r.가용연금제외 = r.순자산 - r.연금;
       r.isHistorical = true;
       rows.push(r);
     });
     // Add stored snapshots
-    snapshots.forEach(s => rows.push({ ...s, isHistorical: false }));
+    snapshots.forEach(s => {
+      const r = { ...s, isHistorical: false };
+      r.총자산 = r.부동산 + r.연금 + r.유동자산 + r.부채;
+      r.순자산 = r.부동산 + r.연금 + r.유동자산 - r.부채;
+      r.가용연금제외 = r.순자산 - r.연금;
+      rows.push(r);
+    });
   }
 
   // Sort by date ascending
@@ -968,10 +978,11 @@ function getAllYearData(entries) {
   // Add period-over-period changes
   rows.forEach((r, i) => {
     if (i === 0) {
-      r.d총자산 = null; r.d부동산 = null; r.d부채 = null; r.d연금 = null; r.d유동자산 = null;
+      r.d총자산 = null; r.d순자산 = null; r.d부동산 = null; r.d부채 = null; r.d연금 = null; r.d유동자산 = null;
     } else {
       const prev = rows[i - 1];
       r.d총자산   = r.총자산   - prev.총자산;
+      r.d순자산   = r.순자산   - prev.순자산;
       r.d부동산   = r.부동산   - prev.부동산;
       r.d부채     = r.부채     - prev.부채;
       r.d연금     = r.연금     - prev.연금;
@@ -1187,9 +1198,9 @@ function renderSummaryTable() {
       <td class="text-danger">${fmt(r.부채)}</td>
       <td>${fmt(r.연금)}</td>
       <td>${fmt(r.유동자산)}</td>
-      <td class="col-total">${fmt(r.총자산)}</td>
+      <td class="col-total">${fmt(r.순자산)}</td>
       <td class="col-avail">${fmt(r.가용연금제외)}</td>
-      <td>${fmtChange(r.d총자산)}</td>
+      <td>${fmtChange(r.d순자산)}</td>
       <td>${fmtChange(r.d부동산)}</td>
       <td>${fmtChange(r.d부채)}</td>
       <td>${fmtChange(r.d연금)}</td>
@@ -1300,7 +1311,7 @@ function renderCharts() {
       labels,
       datasets: [
         {
-          label: '총자산', data: rows.map(r => r.부동산 + r.연금 + r.유동자산),
+          label: '총자산', data: rows.map(r => r.총자산),
           borderColor: '#1a3c6e', backgroundColor: 'rgba(26,60,110,0.1)', tension: 0.3, fill: true, pointRadius: 4,
           datalabels: { display: false },
         },
@@ -1405,7 +1416,7 @@ function renderCharts() {
       labels,
       datasets: [
         {
-          label: '순자산', data: rows.map(r => r.총자산), backgroundColor: '#2563eb',
+          label: '총자산', data: rows.map(r => r.총자산), backgroundColor: '#2563eb',
           datalabels: { display: true, anchor: 'end', align: 'end',
             formatter: v => fmtUk(v), font: { size: 10, weight: '600' }, color: '#1a3c6e',
             backgroundColor: 'rgba(255,255,255,0.82)', borderRadius: 3, padding: { top:1,bottom:1,left:3,right:3 } }
@@ -1451,10 +1462,10 @@ function updateMetricCards() {
     }
   }
 
-  setMetric('m-total', 'm-total-chg', latest.총자산, prev?.총자산);
+  setMetric('m-total', 'm-total-chg', latest.순자산, prev?.순자산);
   setMetric('m-avail', 'm-avail-chg', latest.가용연금제외, prev?.가용연금제외);
   setMetric('m-debt', 'm-debt-chg', latest.부채, prev?.부채);
-  setMetric('m-net', 'm-net-chg', latest.가용연금제외, prev?.가용연금제외);
+  setMetric('m-net', 'm-net-chg', latest.연금, prev?.연금);
 }
 
 // =====================================================
