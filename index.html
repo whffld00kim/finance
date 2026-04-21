@@ -587,12 +587,7 @@ function submitLockScreen() {
     sessionStorage.setItem('finance_view_auth', 'true');
     document.getElementById('appLockScreen').style.display = 'none';
     input.value = '';
-    // 어드민 비밀번호로 입력 시 바로 관리자 모드 진입
-    if (pw === ADMIN_PASSWORD) {
-      isAdmin = true;
-      sessionStorage.setItem('finance_admin', 'true');
-      updateAdminUI();
-    }
+    // 잠금 해제 후 항상 열람 모드 (관리자 모드는 🔒 버튼으로 별도 인증)
   } else {
     const err = document.getElementById('lockError');
     err.textContent = '비밀번호가 틀렸습니다.';
@@ -606,7 +601,7 @@ function submitLockScreen() {
 // =====================================================
 // 관리자 인증
 // =====================================================
-const ADMIN_PASSWORD = '0409'; // ← 비밀번호 변경 시 이 값을 수정하세요
+const ADMIN_PASSWORD = '0000'; // ← 관리자 비밀번호 변경 시 이 값을 수정하세요
 let isAdmin = sessionStorage.getItem('finance_admin') === 'true';
 let authModal;
 let _pendingCallback = null;
