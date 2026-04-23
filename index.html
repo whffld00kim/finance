@@ -124,6 +124,15 @@
   body.viewer-mode .cell-select { pointer-events: none; cursor: default; color: inherit; }
   body.viewer-mode .delete-btn { display: none; }
   .lock-btn { font-size: 0.78rem; padding: 2px 10px; border-radius: 20px; font-weight: 600; transition: all 0.2s; }
+  /* 수량 계산 탭 전용 입력 — 뷰어 모드에서도 항상 편집 가능 */
+  .qty-input {
+    border: 1px solid #dee2e6; background: #fff; width: 100%; font-size: 0.83rem;
+    font-family: inherit; padding: 2px 5px; border-radius: 3px; outline: none; color: inherit;
+  }
+  .qty-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+  .qty-input.amount-field { text-align: right; }
+  .qty-del-btn { color: #dc2626; cursor: pointer; border: none; background: none; font-size: 1rem; }
+  .qty-del-btn:hover { color: #991b1b; }
 
   /* ── 접속 잠금 화면 ── */
   #appLockScreen {
@@ -219,6 +228,7 @@
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-chart">📈 자산 분석</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-stock" onclick="renderStockTab()">📊 주식 현황</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-portfolio" onclick="renderPortfolioTab()">🎯 포트폴리오</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-qty" onclick="renderQtyTab()">🧮 수량 계산</button></li>
   </ul>
 
   <div class="tab-content">
@@ -502,6 +512,36 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ===== TAB 6: 수량 계산 ===== -->
+    <div class="tab-pane fade" id="tab-qty">
+      <div class="section-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="section-title mb-0">🧮 구매 수량 계산기</div>
+          <button class="btn btn-sm btn-outline-primary" onclick="qtyAddRow()">+ 행 추가</button>
+        </div>
+        <!-- 헤더 영역: 분류 · 총투자금액 -->
+        <div class="d-flex align-items-center gap-3 mb-3 p-3 rounded flex-wrap"
+             style="background:#f0f4f8;border:1px solid #dee2e6;">
+          <div class="d-flex align-items-center gap-2">
+            <label class="fw-semibold mb-0" style="color:var(--primary);font-size:0.88rem;white-space:nowrap;">분류</label>
+            <input type="text" id="qtyCategoryInput" class="form-control form-control-sm"
+              style="width:130px;" placeholder="분류명"
+              oninput="qtyCategory=this.value;">
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <label class="fw-semibold mb-0" style="color:var(--primary);font-size:0.88rem;white-space:nowrap;">총투자금액</label>
+            <div class="input-group input-group-sm" style="width:165px;">
+              <input type="number" id="qtyTotalInput" class="form-control text-end" min="0"
+                oninput="qtyTotalAmount=parseFloat(this.value)||0; qtyRecalcAll();">
+              <span class="input-group-text">만원</span>
+            </div>
+          </div>
+          <small class="text-muted">비율·현재가격 입력 시 구매수량 자동 계산</small>
+        </div>
+        <div id="qtyTableWrap"></div>
+      </div>
     </div>
 
   </div>
@@ -2165,12 +2205,149 @@ function calcPortfolio(type) {
 }
 
 // =====================================================
+// 수량 계산 탭
+// =====================================================
+let qtyCategory   = '연금';
+let qtyTotalAmount = 49;
+let qtyRows = [
+  { id: 1, asset: '배당주',        ratio: 0,  price: 10760, ticker: 'SOL미국배당 다우존스' },
+  { id: 2, asset: '지수추종(미국)', ratio: 60, price: 16615, ticker: 'TIGER 미국S&P500TR'  },
+  { id: 3, asset: '지수추종(인도)', ratio: 10, price: 12800, ticker: 'TIGER 인도니프티50'   },
+  { id: 4, asset: '국내 고배당주', ratio: 30, price: 27450, ticker: 'PLUS 고배당주'         },
+];
+let qtyNextId = 5;
+
+function qtySet(id, field, value) {
+  const r = qtyRows.find(x => x.id === id);
+  if (!r) return;
+  r[field] = (field === 'ratio' || field === 'price') ? (parseFloat(value) || 0) : value;
+  qtyRecalcRow(id);
+}
+
+function qtyRecalcRow(id) {
+  const r = qtyRows.find(x => x.id === id);
+  if (!r) return;
+  const invest = qtyTotalAmount * r.ratio / 100;
+  const qty    = r.price > 0 ? (invest * 10000 / r.price) : 0;
+
+  const iEl = document.getElementById('qty-invest-' + id);
+  if (iEl) iEl.textContent = invest.toFixed(1);
+  const qEl = document.getElementById('qty-qty-' + id);
+  if (qEl) qEl.textContent = qty.toFixed(1);
+
+  const ratioSum = qtyRows.reduce((s, x) => s + (x.ratio || 0), 0);
+  const rsEl = document.getElementById('qty-ratiosum');
+  if (rsEl) {
+    rsEl.textContent = ratioSum + '%';
+    rsEl.style.color = Math.abs(ratioSum - 100) < 0.01 ? '#16a34a' : '#dc2626';
+  }
+}
+
+function qtyRecalcAll() {
+  for (const r of qtyRows) qtyRecalcRow(r.id);
+}
+
+function renderQtyTab() {
+  // 헤더 입력값 동기화 (포커스 중인 경우 제외)
+  const catEl = document.getElementById('qtyCategoryInput');
+  if (catEl && catEl !== document.activeElement) catEl.value = qtyCategory;
+  const totEl = document.getElementById('qtyTotalInput');
+  if (totEl && totEl !== document.activeElement) totEl.value = qtyTotalAmount;
+
+  const wrap = document.getElementById('qtyTableWrap');
+  if (!wrap) return;
+
+  if (!qtyRows.length) {
+    wrap.innerHTML = '<p class="text-muted text-center py-4">행 추가 버튼으로 항목을 추가하세요.</p>';
+    return;
+  }
+
+  const ratioSum   = qtyRows.reduce((s, r) => s + (r.ratio || 0), 0);
+  const ratioColor = Math.abs(ratioSum - 100) < 0.01 ? '#16a34a' : '#dc2626';
+
+  let rows = '';
+  for (const r of qtyRows) {
+    const invest = qtyTotalAmount * r.ratio / 100;
+    const qty    = r.price > 0 ? (invest * 10000 / r.price) : 0;
+    rows += `
+    <tr>
+      <td><input type="text" class="cell-input" value="${r.asset}"
+        onchange="qtySet(${r.id},'asset',this.value)" placeholder="자산명"></td>
+      <td style="text-align:center;">
+        <input type="number" class="cell-input" style="width:52px;text-align:center;"
+          value="${r.ratio}" min="0" max="100"
+          oninput="qtySet(${r.id},'ratio',this.value)">
+      </td>
+      <td id="qty-invest-${r.id}" style="text-align:right;font-weight:600;">${invest.toFixed(1)}</td>
+      <td><input type="number" class="cell-input" style="text-align:right;"
+          value="${r.price}" min="0"
+          oninput="qtySet(${r.id},'price',this.value)">
+      </td>
+      <td id="qty-qty-${r.id}" style="text-align:right;font-weight:700;color:var(--accent);">${qty.toFixed(1)}</td>
+      <td><input type="text" class="cell-input" value="${r.ticker}"
+        onchange="qtySet(${r.id},'ticker',this.value)" placeholder="종목명"></td>
+      <td class="admin-only" style="text-align:center;">
+        <button class="delete-btn" onclick="qtyDeleteRow(${r.id})" title="삭제">✕</button>
+      </td>
+    </tr>`;
+  }
+
+  wrap.innerHTML = `
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm align-middle"
+           style="font-size:0.84rem;width:100%;table-layout:fixed;">
+      <colgroup>
+        <col style="width:130px">
+        <col style="width:72px">
+        <col style="width:105px">
+        <col style="width:130px">
+        <col style="width:95px">
+        <col>
+        <col class="admin-only" style="width:44px">
+      </colgroup>
+      <thead>
+        <tr>
+          <th style="text-align:center">자산</th>
+          <th style="text-align:center">비율(%)</th>
+          <th style="text-align:center">투자금액<br><small style="font-weight:400;">(만원, 자동)</small></th>
+          <th style="text-align:center">현재가격(원)</th>
+          <th style="text-align:center">구매수량<br><small style="font-weight:400;">(자동)</small></th>
+          <th style="text-align:center">종목이름</th>
+          <th class="admin-only" style="text-align:center">삭제</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr style="background:#f0f4f8;font-weight:700;">
+          <td style="text-align:right;color:#555;">비율합계</td>
+          <td id="qty-ratiosum" style="text-align:center;color:${ratioColor};">${ratioSum}%</td>
+          <td colspan="4"></td>
+          <td class="admin-only"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>`;
+}
+
+function qtyAddRow() {
+  qtyRows.push({ id: qtyNextId++, asset: '', ratio: 0, price: 0, ticker: '' });
+  renderQtyTab();
+}
+
+function qtyDeleteRow(id) {
+  if (qtyRows.length <= 1) { alert('최소 1개 이상의 항목이 필요합니다.'); return; }
+  qtyRows = qtyRows.filter(r => r.id !== id);
+  renderQtyTab();
+}
+
+// =====================================================
 // 백업 내보내기 / 가져오기
 // =====================================================
 function exportData() {
   const payload = {
     finance: loadData(),
     stocks:  loadStockData(),
+    qty: { category: qtyCategory, totalAmount: qtyTotalAmount, rows: qtyRows },
     exportedAt: new Date().toISOString(),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -2198,6 +2375,14 @@ async function importData(event) {
     _financeData = payload.finance;
     _stockData   = Array.isArray(payload.stocks) ? payload.stocks : [];
 
+    // 수량 계산 데이터 복원
+    if (payload.qty) {
+      qtyCategory    = payload.qty.category    || '연금';
+      qtyTotalAmount = payload.qty.totalAmount || 0;
+      qtyRows        = Array.isArray(payload.qty.rows) ? payload.qty.rows : [];
+      qtyNextId      = qtyRows.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1;
+    }
+
     // 서버 또는 localStorage에 저장
     saveData(_financeData);
     saveStockData(_stockData);
@@ -2207,6 +2392,7 @@ async function importData(event) {
     updateMetricCards();
     renderSummaryTable();
     renderStockTab();
+    renderQtyTab();
 
     const s = document.getElementById('sync-status');
     if (s) { s.textContent = '🟢 복원 완료'; s.style.color = '#16a34a'; }
