@@ -124,6 +124,13 @@
   body.viewer-mode .cell-select { pointer-events: none; cursor: default; color: inherit; }
   body.viewer-mode .delete-btn { display: none; }
   .lock-btn { font-size: 0.78rem; padding: 2px 10px; border-radius: 20px; font-weight: 600; transition: all 0.2s; }
+  /* 총자산 현황 행 숨기기 */
+  .sum-row-hidden { display: none !important; }
+  body.admin-mode .sum-row-hidden {
+    display: table-row !important;
+    opacity: 0.35;
+    background: #f1f5f9 !important;
+  }
   /* 수량 계산 탭 전용 입력 — 뷰어 모드에서도 항상 편집 가능 */
   .qty-input {
     border: 1px solid #dee2e6; background: #fff; width: 100%; font-size: 0.83rem;
@@ -283,6 +290,7 @@
           <table class="table table-bordered summary-table" id="summaryTable">
             <thead>
               <tr>
+                <th class="admin-only" style="width:28px;padding:4px;text-align:center;" title="행 숨기기">👁</th>
                 <th>날짜</th>
                 <th>부동산</th>
                 <th>부채</th>
@@ -295,7 +303,7 @@
                 <th>부채증감</th>
                 <th>연금증감</th>
                 <th>유동자산증감</th>
-                <th style="width:40px" class="admin-only">삭제</th>
+                <th style="width:32px" class="admin-only">삭제</th>
               </tr>
             </thead>
             <tbody id="summaryTbody"></tbody>
@@ -636,6 +644,23 @@ function submitLockScreen() {
     setTimeout(() => { input.classList.remove('shake'); err.textContent = ''; }, 1000);
     input.focus();
   }
+}
+
+// =====================================================
+// 총자산 현황 행 숨기기
+// =====================================================
+let hiddenSummaryRows = new Set(
+  JSON.parse(localStorage.getItem('finance_hidden_rows') || '[]')
+);
+
+function toggleSummaryRow(date) {
+  if (hiddenSummaryRows.has(date)) {
+    hiddenSummaryRows.delete(date);
+  } else {
+    hiddenSummaryRows.add(date);
+  }
+  localStorage.setItem('finance_hidden_rows', JSON.stringify([...hiddenSummaryRows]));
+  renderSummaryTable();
 }
 
 // =====================================================
@@ -1223,11 +1248,15 @@ function renderSummaryTable() {
 
   let html = '';
   rows.forEach((r, i) => {
-    const isLatest = (i === rows.length - 1);
-    const deleteBtn = r.isHistorical
+    const isLatest  = (i === rows.length - 1);
+    const isHidden  = hiddenSummaryRows.has(r.date);
+    const delBtn    = r.isHistorical
       ? '<td class="admin-only"></td>'
       : `<td class="text-center admin-only"><button class="btn btn-sm p-0 text-danger" onclick="deleteSummaryRow('${r.id}')" title="삭제">✕</button></td>`;
-    html += `<tr class="${isLatest ? 'summary-row-total' : ''}">
+    html += `<tr class="${isLatest ? 'summary-row-total' : ''} ${isHidden ? 'sum-row-hidden' : ''}">
+      <td class="admin-only" style="text-align:center;padding:3px;cursor:pointer;" onclick="toggleSummaryRow('${r.date}')" title="${isHidden ? '행 표시' : '행 숨기기'}">
+        <span style="font-size:1rem;line-height:1;opacity:${isHidden ? 0.5 : 1};">${isHidden ? '🙈' : '👁'}</span>
+      </td>
       <td class="text-center fw-semibold">${r.date}</td>
       <td>${fmt(r.부동산)}</td>
       <td class="text-danger">${fmt(r.부채)}</td>
@@ -1240,7 +1269,7 @@ function renderSummaryTable() {
       <td>${fmtChange(r.d부채)}</td>
       <td>${fmtChange(r.d연금)}</td>
       <td>${fmtChange(r.d유동자산)}</td>
-      ${deleteBtn}
+      ${delBtn}
     </tr>`;
   });
 
