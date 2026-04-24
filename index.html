@@ -1253,6 +1253,26 @@ function renderSummaryTable() {
   const rows = getAllYearData(data.entries);
   const tbody = document.getElementById('summaryTbody');
 
+  // 숨김 행을 건너뛴 이전 행 기준으로 증감 재계산
+  rows.forEach((r, i) => {
+    let prevVisible = null;
+    for (let j = i - 1; j >= 0; j--) {
+      if (!hiddenSummaryRows.has(rows[j].date)) {
+        prevVisible = rows[j];
+        break;
+      }
+    }
+    if (!prevVisible) {
+      r._d순자산 = null; r._d부동산 = null; r._d부채 = null; r._d연금 = null; r._d유동자산 = null;
+    } else {
+      r._d순자산   = r.순자산   - prevVisible.순자산;
+      r._d부동산   = r.부동산   - prevVisible.부동산;
+      r._d부채     = r.부채     - prevVisible.부채;
+      r._d연금     = r.연금     - prevVisible.연금;
+      r._d유동자산 = r.유동자산 - prevVisible.유동자산;
+    }
+  });
+
   let html = '';
   rows.forEach((r, i) => {
     const isLatest  = (i === rows.length - 1);
@@ -1271,11 +1291,11 @@ function renderSummaryTable() {
       <td>${fmt(r.유동자산)}</td>
       <td class="col-total">${fmt(r.순자산)}</td>
       <td class="col-avail">${fmt(r.가용연금제외)}</td>
-      <td>${fmtChange(r.d순자산)}</td>
-      <td>${fmtChange(r.d부동산)}</td>
-      <td>${fmtChange(r.d부채)}</td>
-      <td>${fmtChange(r.d연금)}</td>
-      <td>${fmtChange(r.d유동자산)}</td>
+      <td>${fmtChange(r._d순자산)}</td>
+      <td>${fmtChange(r._d부동산)}</td>
+      <td>${fmtChange(r._d부채)}</td>
+      <td>${fmtChange(r._d연금)}</td>
+      <td>${fmtChange(r._d유동자산)}</td>
       ${delBtn}
     </tr>`;
   });
