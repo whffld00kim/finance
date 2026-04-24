@@ -659,7 +659,10 @@ function toggleSummaryRow(date) {
   } else {
     hiddenSummaryRows.add(date);
   }
-  localStorage.setItem('finance_hidden_rows', JSON.stringify([...hiddenSummaryRows]));
+  const arr = [...hiddenSummaryRows];
+  // Firebase에 저장 (모든 기기 동기화), localStorage는 오프라인 대비
+  db.ref('hiddenRows').set(arr).catch(() => {});
+  localStorage.setItem('finance_hidden_rows', JSON.stringify(arr));
   renderSummaryTable();
 }
 
@@ -763,10 +766,11 @@ let _stockData   = null;
 async function initData() {
   const status = document.getElementById('sync-status');
   try {
-    const [finSnap, stkSnap, stkDateSnap] = await Promise.all([
+    const [finSnap, stkSnap, stkDateSnap, hiddenSnap] = await Promise.all([
       db.ref('finance').get(),
       db.ref('stocks').get(),
       db.ref('stockDate').get(),
+      db.ref('hiddenRows').get(),
     ]);
     const fin = finSnap.val();
     const stk = stkSnap.val();
@@ -775,6 +779,9 @@ async function initData() {
                        || { entries: JSON.parse(JSON.stringify(DEFAULT_2026)) };
     _stockData   = ensureArray(stk) || JSON.parse(localStorage.getItem(STOCK_KEY_LS) || '[]');
     if (stkDate) localStorage.setItem('stockDate', stkDate);
+    // 숨긴 행 Firebase에서 로드
+    const hiddenArr = hiddenSnap.val();
+    if (Array.isArray(hiddenArr)) hiddenSummaryRows = new Set(hiddenArr);
     if (status) { status.textContent = '🟢 Firebase 연결됨'; status.style.color = '#16a34a'; }
   } catch (e) {
     console.warn('Firebase 연결 실패 — localStorage 사용:', e.message);
