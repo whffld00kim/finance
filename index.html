@@ -222,10 +222,10 @@
 
   <!-- Metric Cards -->
   <div class="row g-3 mb-3" id="metricCards">
-    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">순 자산</div><div class="metric-value" id="m-total">-</div><div class="metric-change" id="m-total-chg"></div></div></div>
-    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">가용자산 (연금제외)</div><div class="metric-value" id="m-avail">-</div><div class="metric-change" id="m-avail-chg"></div></div></div>
-    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">총 부채</div><div class="metric-value text-danger" id="m-debt">-</div><div class="metric-change" id="m-debt-chg"></div></div></div>
-    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">연금자산</div><div class="metric-value" id="m-net">-</div><div class="metric-change" id="m-net-chg"></div></div></div>
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">순 자산</div><div class="metric-value" id="m-total">-</div></div></div>
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">가용자산 (연금제외)</div><div class="metric-value" id="m-avail">-</div></div></div>
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">총 부채</div><div class="metric-value text-danger" id="m-debt">-</div></div></div>
+    <div class="col-6 col-md-3"><div class="metric-card"><div class="metric-label">연금자산</div><div class="metric-value" id="m-net">-</div></div></div>
   </div>
 
   <!-- Tabs -->
@@ -664,6 +664,10 @@ function toggleSummaryRow(date) {
   db.ref('hiddenRows').set(arr).catch(() => {});
   localStorage.setItem('finance_hidden_rows', JSON.stringify(arr));
   renderSummaryTable();
+  // 자산 분석 탭이 활성화 중이면 차트도 갱신
+  if (document.getElementById('tab-chart')?.classList.contains('active')) {
+    renderCharts();
+  }
 }
 
 // =====================================================
@@ -1371,8 +1375,9 @@ function renderOwnerBreakdown(entries, year) {
 // =====================================================
 function renderCharts() {
   const data = loadData();
-  const rows = getAllYearData(data.entries);
-  const labels = rows.map(r => r.date.substring(0, 4));
+  // 숨긴 행 제외
+  const rows = getAllYearData(data.entries).filter(r => !hiddenSummaryRows.has(r.date));
+  const labels = rows.map(r => r.date);
 
   // Register datalabels plugin globally
   Chart.register(ChartDataLabels);
@@ -1543,20 +1548,14 @@ function updateMetricCards() {
   const latest = rows[rows.length - 1];
   const prev = rows.length > 1 ? rows[rows.length - 2] : null;
 
-  function setMetric(id, chgId, val, prevVal) {
+  function setMetric(id, val) {
     document.getElementById(id).textContent = fmt(val) + ' 만원';
-    if (chgId && prev) {
-      const chg = val - prevVal;
-      const cls = chg > 0 ? 'positive' : (chg < 0 ? 'negative' : 'text-muted');
-      const sign = chg > 0 ? '+' : '';
-      document.getElementById(chgId).innerHTML = `<span class="${cls}">${sign}${fmt(chg)} 만원 (전년대비)</span>`;
-    }
   }
 
-  setMetric('m-total', 'm-total-chg', latest.순자산, prev?.순자산);
-  setMetric('m-avail', 'm-avail-chg', latest.가용연금제외, prev?.가용연금제외);
-  setMetric('m-debt', 'm-debt-chg', latest.부채, prev?.부채);
-  setMetric('m-net', 'm-net-chg', latest.연금, prev?.연금);
+  setMetric('m-total', latest.순자산);
+  setMetric('m-avail', latest.가용연금제외);
+  setMetric('m-debt', latest.부채);
+  setMetric('m-net', latest.연금);
 }
 
 // =====================================================
