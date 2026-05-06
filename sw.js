@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finance-v20260410';
+const CACHE_NAME = 'finance-v20260507';
 const STATIC_ASSETS = [
   './',
   './index.html',

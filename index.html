@@ -115,6 +115,8 @@
   .stock-filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .stock-filter-bar .form-control-sm { font-size: 0.82rem; }
   .stock-filter-bar .badge-count { font-size: 0.75rem; color: #6b7280; white-space: nowrap; }
+  .stock-filter-bar .filter-sum { margin-left: auto; font-size: 0.82rem; font-weight: 600; color: var(--accent); white-space: nowrap; }
+  .stock-filter-bar .filter-sum .label { color: #6b7280; font-weight: 500; margin-right: 4px; }
   /* 관리자 권한 */
   .admin-only { display: none; }
   body.admin-mode .admin-only { display: inline-flex; }
@@ -381,6 +383,7 @@
             <button class="btn btn-outline-secondary btn-sm" onclick="clearStockSearch()" title="검색 초기화">✕</button>
           </div>
           <span class="badge-count" id="stockRowCount"></span>
+          <span class="filter-sum" id="stockFilterSum"></span>
         </div>
         <div class="stock-table-wrap">
           <table class="table table-bordered table-hover" id="stockTable">
@@ -2014,6 +2017,17 @@ function renderStockTab() {
     countEl.textContent = _stockQuery
       ? `검색 결과 ${filtered.length} / ${stocks.length}건`
       : `총 ${stocks.length}건`;
+  }
+
+  // 검색 결과 총금액 합계 표시 (검색어가 있을 때만)
+  const sumEl = document.getElementById('stockFilterSum');
+  if (sumEl) {
+    if (_stockQuery && filtered.length > 0) {
+      const totalSum = Math.floor(filtered.reduce((acc, s) => acc + (Number(s._total) || 0), 0));
+      sumEl.innerHTML = `<span class="label">합계</span>${totalSum.toLocaleString('ko-KR')} 원`;
+    } else {
+      sumEl.textContent = '';
+    }
   }
 
   updateSortArrows();
