@@ -101,6 +101,10 @@
   .cat-기타 { background: #f3f4f6; color: #374151; }
   .stock-summary-table td, .stock-summary-table th { padding: 0.4rem 0.7rem; }
   .stock-total-row { background: #e8f0fe; font-weight: 700; }
+  /* 좁은 화면(폴드 분할·커버 등): 셀 줄바꿈 방지 → 글자 세로 깨짐 대신 가로 스크롤 */
+  @media (max-width: 767px) {
+    .table th, .table td { white-space: nowrap; }
+  }
   /* 주식 보유현황 스크롤 테이블 */
   .stock-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 380px; border: 1px solid #dee2e6; border-radius: 4px; }
   #stockTable { margin-bottom: 0; }
