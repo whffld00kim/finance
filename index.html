@@ -107,7 +107,12 @@
   }
   /* 주식 보유현황 스크롤 테이블 */
   .stock-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 380px; border: 1px solid #dee2e6; border-radius: 4px; }
-  #stockTable { margin-bottom: 0; }
+  /* 계좌명·종목명이 길어도 잘리지 않게: 열을 내용에 맞춰 넓히고 가로 스크롤로 넘긴다 */
+  #stockTable { margin-bottom: 0; min-width: 1080px; }
+  #stockTable th, #stockTable td { white-space: nowrap; }
+  #stockTable td .cell-input { text-overflow: ellipsis; }
+  /* 편집할 때는 칸을 넘겨서라도 전체가 보이도록 */
+  #stockTable td .cell-input:focus { position: relative; z-index: 3; min-width: 240px; }
   #stockTable thead th { position: sticky; top: 0; background: #f8fafc; z-index: 2; border-bottom: 2px solid #dee2e6; }
   /* 정렬 헤더 */
   .sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
@@ -161,28 +166,15 @@
   #appLockScreen .lock-icon { font-size: 3rem; margin-bottom: 0.5rem; }
   #appLockScreen .lock-title { font-size: 1.25rem; font-weight: 700; color: #1a3c6e; margin-bottom: 0.2rem; }
   #appLockScreen .lock-sub { font-size: 0.82rem; color: #888; margin-bottom: 1.5rem; }
-  #appLockScreen .lock-input {
-    width: 100%; padding: 0.65rem 1rem; border: 2px solid #e2e8f0; border-radius: 10px;
-    font-size: 1.1rem; text-align: center; letter-spacing: 0.25em;
-    outline: none; transition: border-color 0.2s;
+  #appLockScreen .lock-error { font-size: 0.82rem; color: #dc2626; margin-top: 0.75rem; min-height: 1.2em; }
+  #appLockScreen .lock-btn-google {
+    width: 100%; padding: 0.65rem; background: #fff; color: #3c4043;
+    border: 1px solid #dadce0; border-radius: 10px;
+    font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.2s, box-shadow 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 0.6rem;
   }
-  #appLockScreen .lock-input:focus { border-color: #2563eb; }
-  #appLockScreen .lock-input.shake {
-    animation: lockShake 0.35s ease;
-    border-color: #dc2626 !important;
-  }
-  #appLockScreen .lock-error { font-size: 0.82rem; color: #dc2626; margin-top: 0.5rem; min-height: 1.2em; }
-  #appLockScreen .lock-btn-submit {
-    width: 100%; margin-top: 1rem; padding: 0.65rem;
-    background: #1a3c6e; color: #fff; border: none; border-radius: 10px;
-    font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.2s;
-  }
-  #appLockScreen .lock-btn-submit:hover { background: #2563eb; }
-  @keyframes lockShake {
-    0%,100% { transform: translateX(0); }
-    20%,60% { transform: translateX(-8px); }
-    40%,80% { transform: translateX(8px); }
-  }
+  #appLockScreen .lock-btn-google:hover { background: #f8f9fa; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
+  #appLockScreen .lock-btn-google:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
 </style>
 </head>
@@ -193,12 +185,12 @@
   <div class="lock-card">
     <div class="lock-icon">🔐</div>
     <div class="lock-title">재무현황 관리 시스템</div>
-    <div class="lock-sub">접속하려면 비밀번호를 입력하세요</div>
-    <input type="password" id="lockInput" class="lock-input" placeholder="••••"
-      maxlength="20" autocomplete="current-password"
-      onkeydown="if(event.key==='Enter')submitLockScreen()">
+    <div class="lock-sub" id="lockSub">구글 계정으로 로그인하세요</div>
+    <button class="lock-btn-google" id="lockGoogleBtn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      <span>Google로 로그인</span>
+    </button>
     <div class="lock-error" id="lockError"></div>
-    <button class="lock-btn-submit" onclick="submitLockScreen()">확인</button>
   </div>
 </div>
 
@@ -213,6 +205,8 @@
       </label>
       <button onclick="enterDemoMode()" id="demoBtn" class="btn btn-sm btn-warning py-0 admin-only" style="font-size:0.75rem;" title="가상 데이터로 데모 화면 보기">🎭 데모</button>
       <button onclick="toggleAdmin()" id="lockBtn" class="btn lock-btn btn-outline-light">🔒 잠김</button>
+      <span class="text-white" style="font-size:0.78rem;opacity:0.85;" id="accountLabel"></span>
+      <button onclick="signOut()" class="btn btn-sm btn-outline-light py-0" style="font-size:0.75rem;" title="로그아웃">로그아웃</button>
       <span class="text-white" style="font-size:0.82rem;" id="currentDateDisplay"></span>
     </div>
   </div>
@@ -395,13 +389,13 @@
               <tr>
                 <th class="sort-th" style="width:70px"  onclick="sortStockBy('owner')">소유자 <span class="sort-arrow" id="sort-owner"></span></th>
                 <th class="sort-th" style="width:80px"  onclick="sortStockBy('country')">투자국가 <span class="sort-arrow" id="sort-country"></span></th>
-                <th class="sort-th" style="width:90px"  onclick="sortStockBy('category')">분류 <span class="sort-arrow" id="sort-category"></span></th>
-                <th class="sort-th" style="width:100px" onclick="sortStockBy('account')">계좌명 <span class="sort-arrow" id="sort-account"></span></th>
-                <th class="sort-th" style="width:130px" onclick="sortStockBy('stockName')">종목명 <span class="sort-arrow" id="sort-stockName"></span></th>
+                <th class="sort-th" style="min-width:90px"  onclick="sortStockBy('category')">분류 <span class="sort-arrow" id="sort-category"></span></th>
+                <th class="sort-th" style="min-width:150px" onclick="sortStockBy('account')">계좌명 <span class="sort-arrow" id="sort-account"></span></th>
+                <th class="sort-th" style="min-width:250px" onclick="sortStockBy('stockName')">종목명 <span class="sort-arrow" id="sort-stockName"></span></th>
                 <th class="sort-th" style="width:70px;text-align:right"  onclick="sortStockBy('shares')">주식수 <span class="sort-arrow" id="sort-shares"></span></th>
                 <th class="sort-th" style="width:90px;text-align:right"  onclick="sortStockBy('price')">현재가 (원) <span class="sort-arrow" id="sort-price"></span></th>
                 <th class="sort-th" style="width:110px;text-align:right" onclick="sortStockBy('total')">총금액 (원) <span class="sort-arrow" id="sort-total"></span></th>
-                <th class="sort-th" style="width:80px" onclick="sortStockBy('broker')">증권명 <span class="sort-arrow" id="sort-broker"></span></th>
+                <th class="sort-th" style="min-width:100px" onclick="sortStockBy('broker')">증권명 <span class="sort-arrow" id="sort-broker"></span></th>
                 <th style="width:40px" class="admin-only">삭제</th>
               </tr>
             </thead>
@@ -562,28 +556,6 @@
   </div>
 </div>
 
-<!-- 비밀번호 인증 Modal -->
-<div class="modal fade" id="authModal" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header" style="background:var(--primary);color:#fff;">
-        <h6 class="modal-title">🔐 관리자 인증</h6>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted small mb-2">관리자 비밀번호를 입력하세요.</p>
-        <input type="password" class="form-control" id="passwordInput" placeholder="비밀번호"
-          onkeydown="if(event.key==='Enter') submitPassword()">
-        <div class="text-danger small mt-1" id="authError"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
-        <button class="btn btn-primary btn-sm" onclick="submitPassword()">확인</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Add/Edit Modal -->
 <div class="modal fade" id="addModal" tabindex="-1">
   <div class="modal-dialog">
@@ -628,30 +600,14 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
 // =====================================================
 // 접속 잠금 화면
+//   실제 로그인 처리는 아래 "인증(Google 로그인)" 절에 있다.
+//   Firebase 초기화 이후여야 해서 그쪽에 두었다.
 // =====================================================
-const VIEW_PASSWORD = '0409'; // ← 열람 비밀번호 (일반 접속용)
-
-function submitLockScreen() {
-  const input = document.getElementById('lockInput');
-  const pw = input.value;
-  if (pw === VIEW_PASSWORD || pw === ADMIN_PASSWORD) {
-    sessionStorage.setItem('finance_view_auth', 'true');
-    document.getElementById('appLockScreen').style.display = 'none';
-    input.value = '';
-    // 잠금 해제 후 항상 열람 모드 (관리자 모드는 🔒 버튼으로 별도 인증)
-  } else {
-    const err = document.getElementById('lockError');
-    err.textContent = '비밀번호가 틀렸습니다.';
-    input.classList.add('shake');
-    input.value = '';
-    setTimeout(() => { input.classList.remove('shake'); err.textContent = ''; }, 1000);
-    input.focus();
-  }
-}
 
 // =====================================================
 // 총자산 현황 행 숨기기
@@ -678,12 +634,13 @@ function toggleSummaryRow(date) {
 }
 
 // =====================================================
-// 관리자 인증
+// 관리자 모드
+//   권한은 비밀번호가 아니라 로그인한 계정으로 정해진다.
+//   currentRole === 'admin' 인 계정만 관리자 모드로 전환할 수 있고,
+//   그 계정만 DB 쓰기가 허용된다(보안 규칙에서도 동일하게 막는다).
+//   admin 계정도 켤 때는 열람 모드로 시작한다 — 실수로 고치는 것을 막기 위함.
 // =====================================================
-const ADMIN_PASSWORD = '0000'; // ← 관리자 비밀번호 변경 시 이 값을 수정하세요
-let isAdmin = sessionStorage.getItem('finance_admin') === 'true';
-let authModal;
-let _pendingCallback = null;
+let isAdmin = false;
 
 function updateAdminUI() {
   const lockBtn = document.getElementById('lockBtn');
@@ -705,42 +662,33 @@ function updateAdminUI() {
   }
 }
 
-function requireAdmin(callback) {
-  if (isAdmin) { callback(); return; }
-  _pendingCallback = callback;
-  document.getElementById('passwordInput').value = '';
-  document.getElementById('authError').textContent = '';
-  authModal.show();
+function enterAdminMode() {
+  if (currentRole !== 'admin') {
+    alert('이 계정은 읽기 전용입니다. 수정하려면 관리자 계정으로 로그인하세요.');
+    return false;
+  }
+  isAdmin = true;
+  updateAdminUI();
+  renderEntryTable();
+  renderStockTab();
+  return true;
 }
 
-function submitPassword() {
-  const pw = document.getElementById('passwordInput').value;
-  if (pw === ADMIN_PASSWORD) {
-    isAdmin = true;
-    sessionStorage.setItem('finance_admin', 'true');
-    authModal.hide();
-    updateAdminUI();
-    renderEntryTable();
-    renderStockTab();
-    if (_pendingCallback) { _pendingCallback(); _pendingCallback = null; }
-  } else {
-    document.getElementById('authError').textContent = '❌ 비밀번호가 틀렸습니다.';
-    document.getElementById('passwordInput').value = '';
-    document.getElementById('passwordInput').focus();
-  }
+function requireAdmin(callback) {
+  if (isAdmin) { callback(); return; }
+  if (enterAdminMode()) callback();
 }
 
 function toggleAdmin() {
   if (isAdmin) {
     if (confirm('관리자 모드를 종료하시겠습니까?')) {
       isAdmin = false;
-      sessionStorage.removeItem('finance_admin');
       updateAdminUI();
       renderEntryTable();
       renderStockTab();
     }
   } else {
-    requireAdmin(() => {});
+    enterAdminMode();
   }
 }
 
@@ -758,6 +706,93 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
+
+// =====================================================
+// 인증 (Google 로그인)
+//   허용 계정 목록은 DB의 allowedUsers/{uid} 에 있다 ('admin' 또는 'viewer').
+//   소스에 계정을 적어두지 않으려는 것이다 — 이 저장소는 공개다.
+//   보안 규칙도 같은 값을 보므로, 화면을 조작해도 권한은 넘어가지 않는다.
+// =====================================================
+let currentRole = null;   // 'admin' | 'viewer' | null
+
+function lockMessage(msg, isError) {
+  const el = document.getElementById('lockError');
+  const sub = document.getElementById('lockSub');
+  if (el) el.textContent = isError ? msg : '';
+  if (sub && !isError) sub.textContent = msg;
+}
+
+function signInWithGoogle() {
+  const btn = document.getElementById('lockGoogleBtn');
+  if (btn) btn.disabled = true;
+  lockMessage('', false);
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err => {
+    if (btn) btn.disabled = false;
+    // 팝업이 막히는 환경(일부 인앱 브라우저)에서는 리디렉션으로 넘긴다
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+      auth.signInWithRedirect(provider);
+      return;
+    }
+    if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+    console.warn('로그인 실패:', err.code, err.message);
+    lockMessage('로그인에 실패했습니다. (' + err.code + ')', true);
+  });
+}
+
+function signOut() {
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  auth.signOut();
+  location.reload();
+}
+
+// 로그인 상태가 정해진 뒤에야 데이터를 읽는다.
+// 규칙이 인증을 요구하므로, 로그인 전에 읽으면 권한 거부가 난다.
+auth.onAuthStateChanged(async user => {
+  const lock = document.getElementById('appLockScreen');
+  const btn = document.getElementById('lockGoogleBtn');
+
+  if (!user) {
+    currentRole = null;
+    isAdmin = false;
+    if (btn) btn.disabled = false;
+    if (lock) { lock.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+    return;
+  }
+
+  // 로그인은 됐다. 허용된 계정인지 확인한다.
+  let role = null;
+  try {
+    const snap = await db.ref('allowedUsers/' + user.uid).get();
+    role = snap.val();
+  } catch (e) {
+    console.warn('권한 조회 실패:', e.message);
+  }
+
+  if (role !== 'admin' && role !== 'viewer') {
+    lockMessage('접근이 허용되지 않은 계정입니다: ' + (user.email || user.uid), true);
+    if (btn) btn.disabled = false;
+    await auth.signOut();
+    return;
+  }
+
+  currentRole = role;
+  if (lock) lock.style.display = 'none';
+  document.body.style.overflow = '';
+  updateAccountUI(user);
+  await startApp();
+});
+
+function updateAccountUI(user) {
+  const el = document.getElementById('accountLabel');
+  if (el) {
+    el.textContent = (user.displayName || user.email || '') + (currentRole === 'admin' ? '' : ' (열람)');
+    el.title = user.email || '';
+  }
+  const lockBtn = document.getElementById('lockBtn');
+  if (lockBtn && currentRole !== 'admin') lockBtn.style.display = 'none';
+}
 
 function ensureArray(val) {
   if (!val) return [];
@@ -2043,8 +2078,8 @@ function renderStockTab() {
       <td><input class="cell-input" list="stock-dl-owner"     value="${s.owner || ''}"     onchange="updateStockField('${s.id}','owner',this.value)"     placeholder="소유자"></td>
       <td><input class="cell-input" list="stock-dl-country"   value="${s.country || ''}"   onchange="updateStockField('${s.id}','country',this.value)"   placeholder="국가"></td>
       <td><input class="cell-input" list="stock-dl-category"  value="${s.category || ''}"  onchange="updateStockField('${s.id}','category',this.value)"  placeholder="분류"></td>
-      <td><input class="cell-input" list="stock-dl-account"   value="${s.account || ''}"   onchange="updateStockField('${s.id}','account',this.value)"   placeholder="계좌명"></td>
-      <td><input class="cell-input" list="stock-dl-stockName" value="${s.stockName || ''}" onchange="updateStockField('${s.id}','stockName',this.value)" placeholder="종목명"></td>
+      <td><input class="cell-input" list="stock-dl-account"   value="${s.account || ''}"   title="${s.account || ''}"   onchange="updateStockField('${s.id}','account',this.value)"   placeholder="계좌명"></td>
+      <td><input class="cell-input" list="stock-dl-stockName" value="${s.stockName || ''}" title="${s.stockName || ''}" onchange="updateStockField('${s.id}','stockName',this.value)" placeholder="종목명"></td>
       <td style="text-align:right"><input class="cell-input" style="text-align:right" type="number" value="${s.shares || ''}" oninput="updateStockField('${s.id}','shares',this.value)" placeholder="0"></td>
       <td style="text-align:right"><input class="cell-input" style="text-align:right" type="number" value="${s.price || ''}" oninput="updateStockField('${s.id}','price',this.value)" placeholder="0"></td>
       <td style="text-align:right;font-weight:600;color:#1a3c6e" id="stock-total-${s.id}">${fmt(Math.round(total))}</td>
@@ -2460,27 +2495,12 @@ async function importData(event) {
 // =====================================================
 // INIT
 // =====================================================
-document.addEventListener('DOMContentLoaded', async () => {
-  addModal  = new bootstrap.Modal(document.getElementById('addModal'));
-  authModal = new bootstrap.Modal(document.getElementById('authModal'));
-
-  // 접속 잠금 화면 처리
-  if (sessionStorage.getItem('finance_view_auth') === 'true') {
-    document.getElementById('appLockScreen').style.display = 'none';
-  } else {
-    // 잠금 화면이 보이는 동안 배경 스크롤 방지
-    document.body.style.overflow = 'hidden';
-    document.getElementById('appLockScreen').style.display = 'flex';
-    setTimeout(() => document.getElementById('lockInput').focus(), 100);
-    // 인증될 때까지 대기 후 스크롤 복원
-    const observer = new MutationObserver(() => {
-      if (document.getElementById('appLockScreen').style.display === 'none') {
-        document.body.style.overflow = '';
-        observer.disconnect();
-      }
-    });
-    observer.observe(document.getElementById('appLockScreen'), { attributes: true, attributeFilter: ['style'] });
-  }
+// 로그인이 확인된 뒤에만 호출된다 (onAuthStateChanged).
+// 로그인 상태가 갱신될 때 두 번 불릴 수 있어 한 번만 돌도록 막아둔다.
+let _appStarted = false;
+async function startApp() {
+  if (_appStarted) return;
+  _appStarted = true;
 
   updateAdminUI();
 
@@ -2500,11 +2520,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderCharts();
   });
 
-  // 서버(NAS)에서 데이터 로드 후 렌더링
+  // 서버에서 데이터 로드 후 렌더링
   await initData();
   renderEntryTable();
   updateMetricCards();
   renderSummaryTable();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  addModal  = new bootstrap.Modal(document.getElementById('addModal'));
+
+  // 잠금 화면은 기본으로 띄워두고, onAuthStateChanged가 로그인을 확인하면 내린다.
+  document.body.style.overflow = 'hidden';
+  document.getElementById('appLockScreen').style.display = 'flex';
 });
 </script>
 <script>

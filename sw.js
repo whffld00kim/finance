@@ -1,4 +1,5 @@
-const CACHE_NAME = 'finance-v20260507';
+// v20260807: Google 로그인 도입 — 기존 캐시를 갈아엎어야 새 index.html이 뜬다
+const CACHE_NAME = 'finance-v20260807';
 const STATIC_ASSETS = [
   './',
   './index.html',
