@@ -113,12 +113,28 @@
      2026-08-22 실측: 4글자짜리 '분류'·'증권명'이 211px 까지 벌어져 표가 1,408px 였다.
      min-width 를 width 로 바꾸고 width:auto 로 두니 939px 로 줄었다(내용은 그대로 다 보임).
      좁은 화면에서는 .stock-table-wrap 의 overflow-x 로 가로 스크롤된다. */
-  #stockTable { margin-bottom: 0; width: auto; min-width: 0; }
+  #stockTable { margin-bottom: 0; width: auto; min-width: 0; table-layout: auto; }
   #stockTable th, #stockTable td { white-space: nowrap; padding-left: .4rem; padding-right: .4rem; }
   #stockTable .sort-arrow { width: 11px; }
+  /* 열 너비를 그 열의 가장 긴 글자에 자동으로 맞춘다.
+     ⚠ px 로 못 박으면 안 된다 — 기기·글꼴이 바뀌면 그대로 잘린다.
+     2026-08-22 에 데스크톱에서 잰 px 를 박았다가 폰에서 '유동자산'이 '유동...'으로 잘렸다.
+     <input> 은 값이 짧아도 기본 폭(약 20글자)을 차지해서 내용에 맞춰 줄지 않는다.
+     그래서 같은 글자를 담은 보이지 않는 span(.sz)이 칸의 너비를 만들고,
+     input 은 position:absolute 로 그 위에 덮는다.
+     ⚠ input 을 흐름 안에 두면(grid 로 겹치는 것 포함) 기본 폭이 그대로 열 너비에 반영된다 —
+     2026-08-22 에 grid 로 겹쳐 봤더니 모든 열이 161px 로 벌어졌다. absolute 여야 빠진다.
+     글꼴이 커지든 기기가 바뀌든 항상 딱 맞고, 좁으면 .stock-table-wrap 이 가로 스크롤한다. */
+  #stockTable .cw { position: relative; display: block; }
+  #stockTable .cw .sz { visibility: hidden; white-space: pre; }
+  #stockTable .cw .cell-input { position: absolute; left: 0; top: 0; right: 0; bottom: 0; width: 100%; }
   #stockTable td .cell-input { text-overflow: ellipsis; }
-  /* 편집할 때는 칸을 넘겨서라도 전체가 보이도록 */
-  #stockTable td .cell-input:focus { position: relative; z-index: 3; min-width: 240px; }
+  /* 편집할 때는 칸을 넘겨서라도 전체가 보이도록.
+     ⚠ position 을 relative 로 되돌리면 안 된다 — 흐름으로 돌아오면서 열 너비를 밀어버린다.
+     absolute 를 유지한 채 right:auto 로 오른쪽으로만 늘리고, 옆 칸 글자가 비쳐 보이지
+     않게 배경을 채운다. */
+  #stockTable td .cell-input:focus { z-index: 3; min-width: 240px; right: auto; background: #fff;
+    box-shadow: 0 0 0 2px var(--accent, #1a73e8) inset; padding: 0 2px; }
   #stockTable thead th { position: sticky; top: 0; background: #f8fafc; z-index: 2; border-bottom: 2px solid #dee2e6; }
   /* 정렬 헤더 */
   .sort-th { cursor: pointer; user-select: none; white-space: nowrap; }
@@ -393,15 +409,15 @@
           <table class="table table-bordered table-hover" id="stockTable">
             <thead>
               <tr>
-                <th class="sort-th" style="width:70px"  onclick="sortStockBy('owner')">소유자 <span class="sort-arrow" id="sort-owner"></span></th>
-                <th class="sort-th" style="width:84px"  onclick="sortStockBy('country')">투자국가 <span class="sort-arrow" id="sort-country"></span></th>
-                <th class="sort-th" style="width:74px"  onclick="sortStockBy('category')">분류 <span class="sort-arrow" id="sort-category"></span></th>
-                <th class="sort-th" style="width:116px" onclick="sortStockBy('account')">계좌명 <span class="sort-arrow" id="sort-account"></span></th>
-                <th class="sort-th" style="width:210px" onclick="sortStockBy('stockName')">종목명 <span class="sort-arrow" id="sort-stockName"></span></th>
-                <th class="sort-th" style="width:72px;text-align:right"  onclick="sortStockBy('shares')">주식수 <span class="sort-arrow" id="sort-shares"></span></th>
-                <th class="sort-th" style="width:98px;text-align:right"  onclick="sortStockBy('price')">현재가 (원) <span class="sort-arrow" id="sort-price"></span></th>
-                <th class="sort-th" style="width:104px;text-align:right" onclick="sortStockBy('total')">총금액 (원) <span class="sort-arrow" id="sort-total"></span></th>
-                <th class="sort-th" style="width:74px" onclick="sortStockBy('broker')">증권명 <span class="sort-arrow" id="sort-broker"></span></th>
+                <th class="sort-th" onclick="sortStockBy('owner')">소유자 <span class="sort-arrow" id="sort-owner"></span></th>
+                <th class="sort-th" onclick="sortStockBy('country')">투자국가 <span class="sort-arrow" id="sort-country"></span></th>
+                <th class="sort-th" onclick="sortStockBy('category')">분류 <span class="sort-arrow" id="sort-category"></span></th>
+                <th class="sort-th" onclick="sortStockBy('account')">계좌명 <span class="sort-arrow" id="sort-account"></span></th>
+                <th class="sort-th" onclick="sortStockBy('stockName')">종목명 <span class="sort-arrow" id="sort-stockName"></span></th>
+                <th class="sort-th" style="text-align:right" onclick="sortStockBy('shares')">주식수 <span class="sort-arrow" id="sort-shares"></span></th>
+                <th class="sort-th" style="text-align:right" onclick="sortStockBy('price')">현재가 (원) <span class="sort-arrow" id="sort-price"></span></th>
+                <th class="sort-th" style="text-align:right" onclick="sortStockBy('total')">총금액 (원) <span class="sort-arrow" id="sort-total"></span></th>
+                <th class="sort-th" onclick="sortStockBy('broker')">증권명 <span class="sort-arrow" id="sort-broker"></span></th>
                 <th style="width:40px" class="admin-only">삭제</th>
               </tr>
             </thead>
@@ -2077,19 +2093,38 @@ function renderStockTab() {
 
   updateSortArrows();
 
+  // 칸 하나 = 보이지 않는 글자(.sz) + 그 위에 겹친 입력칸.
+  // .sz 가 칸의 너비를 만들어서 열이 "가장 긴 글자"에 자동으로 맞는다 (CSS 주석 참고).
+  // 값을 고치면 oninput 으로 .sz 도 같이 바꿔 줘야 너비가 따라온다.
+  const esc = v => String(v ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const cell = (id, field, val, listId, ph, num = false) => {
+    const v = (val === 0 || val) ? String(val) : '';
+    const save = `updateStockField('${id}','${field}',this.value)`;
+    const resize = 'this.previousElementSibling.textContent = this.value || this.placeholder';
+    // 숫자칸은 입력 즉시 저장(oninput), 글자칸은 다 치고 나서 저장(onchange).
+    // ⚠ oninput 을 두 번 쓰면 뒤엣것이 버려진다 — 숫자칸은 한 핸들러에 둘을 합친다.
+    const attrs = num ? ` oninput="${resize}; ${save}"` : ` oninput="${resize}" onchange="${save}"`;
+    return `<label class="cw">`
+      + `<span class="sz">${esc(v || ph)}</span>`
+      + `<input class="cell-input"${listId ? ` list="${listId}"` : ''}`
+      + `${num ? ' type="number" style="text-align:right"' : ''}${field === 'broker' ? ' lang="ko"' : ''}`
+      + ` value="${esc(v)}" title="${esc(v)}" placeholder="${esc(ph)}"${attrs}>`
+      + `</label>`;
+  };
+
   tbody.innerHTML = filtered.map(s => {
     const total = s._total;
     const catClass = 'cat-' + (STOCK_CATEGORIES.includes(s.category) ? s.category : '기타');
     return `<tr>
-      <td><input class="cell-input" list="stock-dl-owner"     value="${s.owner || ''}"     onchange="updateStockField('${s.id}','owner',this.value)"     placeholder="소유자"></td>
-      <td><input class="cell-input" list="stock-dl-country"   value="${s.country || ''}"   onchange="updateStockField('${s.id}','country',this.value)"   placeholder="국가"></td>
-      <td><input class="cell-input" list="stock-dl-category"  value="${s.category || ''}"  onchange="updateStockField('${s.id}','category',this.value)"  placeholder="분류"></td>
-      <td><input class="cell-input" list="stock-dl-account"   value="${s.account || ''}"   title="${s.account || ''}"   onchange="updateStockField('${s.id}','account',this.value)"   placeholder="계좌명"></td>
-      <td><input class="cell-input" list="stock-dl-stockName" value="${s.stockName || ''}" title="${s.stockName || ''}" onchange="updateStockField('${s.id}','stockName',this.value)" placeholder="종목명"></td>
-      <td style="text-align:right"><input class="cell-input" style="text-align:right" type="number" value="${s.shares || ''}" oninput="updateStockField('${s.id}','shares',this.value)" placeholder="0"></td>
-      <td style="text-align:right"><input class="cell-input" style="text-align:right" type="number" value="${s.price || ''}" oninput="updateStockField('${s.id}','price',this.value)" placeholder="0"></td>
+      <td>${cell(s.id, 'owner',     s.owner,     'stock-dl-owner',     '소유자')}</td>
+      <td>${cell(s.id, 'country',   s.country,   'stock-dl-country',   '국가')}</td>
+      <td>${cell(s.id, 'category',  s.category,  'stock-dl-category',  '분류')}</td>
+      <td>${cell(s.id, 'account',   s.account,   'stock-dl-account',   '계좌명')}</td>
+      <td>${cell(s.id, 'stockName', s.stockName, 'stock-dl-stockName', '종목명')}</td>
+      <td style="text-align:right">${cell(s.id, 'shares', s.shares, '', '0', true)}</td>
+      <td style="text-align:right">${cell(s.id, 'price',  s.price,  '', '0', true)}</td>
       <td style="text-align:right;font-weight:600;color:#1a3c6e" id="stock-total-${s.id}">${fmt(Math.round(total))}</td>
-      <td><input class="cell-input" list="stock-dl-broker" lang="ko" value="${s.broker || ''}" onchange="updateStockField('${s.id}','broker',this.value)" placeholder="증권사"></td>
+      <td>${cell(s.id, 'broker', s.broker, 'stock-dl-broker', '증권사')}</td>
       <td style="text-align:center" class="admin-only"><button class="delete-btn" onclick="deleteStockEntry('${s.id}')">✕</button></td>
     </tr>`;
   }).join('');

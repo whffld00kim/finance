@@ -1,5 +1,5 @@
-// v20260822: 주식 보유현황 표 열 너비 정리 (index.html 을 고치면 이 버전도 같이 올릴 것)
-const CACHE_NAME = 'finance-v20260822';
+// v20260822b: 주식 보유현황 표 열 너비를 내용에 맞춰 자동 계산 (index.html 고치면 이 버전도 올릴 것)
+const CACHE_NAME = 'finance-v20260822b';
 const STATIC_ASSETS = [
   './',
   './index.html',
