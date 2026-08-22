@@ -1,5 +1,5 @@
-// v20260807: Google 로그인 도입 — 기존 캐시를 갈아엎어야 새 index.html이 뜬다
-const CACHE_NAME = 'finance-v20260807';
+// v20260822: 주식 보유현황 표 열 너비 정리 (index.html 을 고치면 이 버전도 같이 올릴 것)
+const CACHE_NAME = 'finance-v20260822';
 const STATIC_ASSETS = [
   './',
   './index.html',

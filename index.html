@@ -107,9 +107,15 @@
   }
   /* 주식 보유현황 스크롤 테이블 */
   .stock-table-wrap { overflow-x: auto; overflow-y: auto; max-height: 380px; border: 1px solid #dee2e6; border-radius: 4px; }
-  /* 계좌명·종목명이 길어도 잘리지 않게: 열을 내용에 맞춰 넓히고 가로 스크롤로 넘긴다 */
-  #stockTable { margin-bottom: 0; min-width: 1080px; }
-  #stockTable th, #stockTable td { white-space: nowrap; }
+  /* 열 너비는 아래 th 의 width 로 내용에 맞춰 고정한다.
+     ⚠ width:auto 가 핵심이다 — Bootstrap 의 .table{width:100%} 를 그대로 두면 표가
+     컨테이너를 꽉 채우려고 남는 폭을 min-width 열(분류·계좌명·증권명)에 몰아준다.
+     2026-08-22 실측: 4글자짜리 '분류'·'증권명'이 211px 까지 벌어져 표가 1,408px 였다.
+     min-width 를 width 로 바꾸고 width:auto 로 두니 939px 로 줄었다(내용은 그대로 다 보임).
+     좁은 화면에서는 .stock-table-wrap 의 overflow-x 로 가로 스크롤된다. */
+  #stockTable { margin-bottom: 0; width: auto; min-width: 0; }
+  #stockTable th, #stockTable td { white-space: nowrap; padding-left: .4rem; padding-right: .4rem; }
+  #stockTable .sort-arrow { width: 11px; }
   #stockTable td .cell-input { text-overflow: ellipsis; }
   /* 편집할 때는 칸을 넘겨서라도 전체가 보이도록 */
   #stockTable td .cell-input:focus { position: relative; z-index: 3; min-width: 240px; }
@@ -388,14 +394,14 @@
             <thead>
               <tr>
                 <th class="sort-th" style="width:70px"  onclick="sortStockBy('owner')">소유자 <span class="sort-arrow" id="sort-owner"></span></th>
-                <th class="sort-th" style="width:80px"  onclick="sortStockBy('country')">투자국가 <span class="sort-arrow" id="sort-country"></span></th>
-                <th class="sort-th" style="min-width:90px"  onclick="sortStockBy('category')">분류 <span class="sort-arrow" id="sort-category"></span></th>
-                <th class="sort-th" style="min-width:150px" onclick="sortStockBy('account')">계좌명 <span class="sort-arrow" id="sort-account"></span></th>
-                <th class="sort-th" style="min-width:250px" onclick="sortStockBy('stockName')">종목명 <span class="sort-arrow" id="sort-stockName"></span></th>
-                <th class="sort-th" style="width:70px;text-align:right"  onclick="sortStockBy('shares')">주식수 <span class="sort-arrow" id="sort-shares"></span></th>
-                <th class="sort-th" style="width:90px;text-align:right"  onclick="sortStockBy('price')">현재가 (원) <span class="sort-arrow" id="sort-price"></span></th>
-                <th class="sort-th" style="width:110px;text-align:right" onclick="sortStockBy('total')">총금액 (원) <span class="sort-arrow" id="sort-total"></span></th>
-                <th class="sort-th" style="min-width:100px" onclick="sortStockBy('broker')">증권명 <span class="sort-arrow" id="sort-broker"></span></th>
+                <th class="sort-th" style="width:84px"  onclick="sortStockBy('country')">투자국가 <span class="sort-arrow" id="sort-country"></span></th>
+                <th class="sort-th" style="width:74px"  onclick="sortStockBy('category')">분류 <span class="sort-arrow" id="sort-category"></span></th>
+                <th class="sort-th" style="width:116px" onclick="sortStockBy('account')">계좌명 <span class="sort-arrow" id="sort-account"></span></th>
+                <th class="sort-th" style="width:210px" onclick="sortStockBy('stockName')">종목명 <span class="sort-arrow" id="sort-stockName"></span></th>
+                <th class="sort-th" style="width:72px;text-align:right"  onclick="sortStockBy('shares')">주식수 <span class="sort-arrow" id="sort-shares"></span></th>
+                <th class="sort-th" style="width:98px;text-align:right"  onclick="sortStockBy('price')">현재가 (원) <span class="sort-arrow" id="sort-price"></span></th>
+                <th class="sort-th" style="width:104px;text-align:right" onclick="sortStockBy('total')">총금액 (원) <span class="sort-arrow" id="sort-total"></span></th>
+                <th class="sort-th" style="width:74px" onclick="sortStockBy('broker')">증권명 <span class="sort-arrow" id="sort-broker"></span></th>
                 <th style="width:40px" class="admin-only">삭제</th>
               </tr>
             </thead>
