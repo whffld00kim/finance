@@ -452,64 +452,41 @@
     <!-- ===== TAB 5: 포트폴리오 ===== -->
     <div class="tab-pane fade" id="tab-portfolio">
 
-      <!-- 두 섹션 나란히 -->
-      <div class="row g-3">
-
-        <!-- 개인연금 섹션 -->
-        <div class="col-12 col-lg-6">
-          <div class="section-card h-100">
-            <div class="section-title mb-3">■ 개인연금 (투자국가별)</div>
-            <div class="table-responsive">
-              <table class="table table-bordered">
-                <thead><tr>
-                  <th style="width:90px">투자국가</th>
-                  <th style="text-align:right">현재 금액 (원)</th>
-                  <th style="text-align:right">현재 비율</th>
-                  <th style="width:130px;text-align:center">목표 비율 (%)</th>
-                </tr></thead>
-                <tbody id="pfTbody-pension"></tbody>
-                <tfoot id="pfTfoot-pension"></tfoot>
-              </table>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mt-3">
-              <small class="text-muted">※ 합계 100%</small>
-              <button class="btn btn-calc" onclick="calcPortfolio('pension')">🔄 계산</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- DC+IRP 섹션 -->
-        <div class="col-12 col-lg-6">
-          <div class="section-card h-100">
-            <div class="section-title mb-3">■ DC + IRP (투자국가별)</div>
-            <div class="table-responsive">
-              <table class="table table-bordered">
-                <thead><tr>
-                  <th style="width:90px">투자국가</th>
-                  <th style="text-align:right">현재 금액 (원)</th>
-                  <th style="text-align:right">현재 비율</th>
-                  <th style="width:130px;text-align:center">목표 비율 (%)</th>
-                </tr></thead>
-                <tbody id="pfTbody-dc"></tbody>
-                <tfoot id="pfTfoot-dc"></tfoot>
-              </table>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mt-3">
-              <small class="text-muted">※ 합계 100%</small>
-              <button class="btn btn-calc" onclick="calcPortfolio('dc')">🔄 계산</button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- 개인연금 매매 계획 -->
-      <div class="section-card" id="pfResultCard-pension" style="display:none;">
-        <div class="section-title mb-3">■ 개인연금 매매 계획</div>
+      <!-- 연금 전체 (개인연금 + DC + IRP) -->
+      <div class="section-card">
+        <div class="section-title mb-3">■ 연금 전체 (투자국가별)</div>
         <div class="table-responsive">
           <table class="table table-bordered">
             <thead><tr>
-              <th>투자국가</th><th>소유자</th><th>증권명</th><th>종목명</th>
+              <th style="width:80px">투자국가</th>
+              <th style="text-align:right">개인연금</th>
+              <th style="text-align:right">DC</th>
+              <th style="text-align:right">IRP</th>
+              <th style="text-align:right">합계 (원)</th>
+              <th style="width:85px;text-align:right">현재 비율</th>
+              <th style="width:120px;text-align:center">목표 비율 (%)</th>
+            </tr></thead>
+            <tbody id="pfTbody"></tbody>
+            <tfoot id="pfTfoot"></tfoot>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+          <small class="text-muted">
+            계좌 칸의 작은 숫자 = <b>그 계좌 안에서 그 국가가 차지하는 비중</b>.
+            세로로 읽으면 계좌별 구성, 가로로 읽으면 그 국가가 어느 계좌에 들어 있는지 보인다.
+            &nbsp;※ 목표 비율 합계 100%
+          </small>
+          <button class="btn btn-calc" onclick="calcPortfolio()">🔄 계산</button>
+        </div>
+      </div>
+
+      <!-- 매매 계획 -->
+      <div class="section-card" id="pfResultCard" style="display:none;">
+        <div class="section-title mb-3">■ 연금 전체 매매 계획</div>
+        <div class="table-responsive">
+          <table class="table table-bordered">
+            <thead><tr>
+              <th>투자국가</th><th>계좌</th><th>소유자</th><th>증권명</th><th>종목명</th>
               <th style="text-align:right">현재 주수</th>
               <th style="text-align:right">현재가 (원)</th>
               <th style="text-align:right">현재 금액 (원)</th>
@@ -518,29 +495,13 @@
               <th style="text-align:right">매매 주수</th>
               <th style="text-align:center">매매</th>
             </tr></thead>
-            <tbody id="pfResultTbody-pension"></tbody>
+            <tbody id="pfResultTbody"></tbody>
           </table>
         </div>
-      </div>
-
-      <!-- DC+IRP 매매 계획 -->
-      <div class="section-card" id="pfResultCard-dc" style="display:none;">
-        <div class="section-title mb-3">■ DC + IRP 매매 계획</div>
-        <div class="table-responsive">
-          <table class="table table-bordered">
-            <thead><tr>
-              <th>투자국가</th><th>소유자</th><th>증권명</th><th>종목명</th>
-              <th style="text-align:right">현재 주수</th>
-              <th style="text-align:right">현재가 (원)</th>
-              <th style="text-align:right">현재 금액 (원)</th>
-              <th style="text-align:right">목표 금액 (원)</th>
-              <th style="text-align:right">차이 (원)</th>
-              <th style="text-align:right">매매 주수</th>
-              <th style="text-align:center">매매</th>
-            </tr></thead>
-            <tbody id="pfResultTbody-dc"></tbody>
-          </table>
-        </div>
+        <small class="text-muted d-block mt-2">
+          ※ 차이 금액은 그 국가 안에서 <b>현재 금액에 비례해</b> 종목별로 나눈다.
+          예수금·MMF·펀드처럼 수량을 모르는 행(1주로 넣은 항목)은 주수 대신 금액으로 읽을 것.
+        </small>
       </div>
 
     </div>
@@ -2210,105 +2171,130 @@ function refreshStockSummary(stocks) {
 }
 
 // =====================================================
-// 포트폴리오 탭
+// 포트폴리오 탭 — 연금 전체(개인연금 + DC + IRP)를 한 표로 본다
+// -----------------------------------------------------------------------
+// 2026-08-24: 종전의 「개인연금」/「DC+IRP」 두 섹션을 하나로 합쳤다.
+//   · 국가별 비율은 **연금 전체** 기준으로 계산한다 (목표 비율도 하나뿐이다)
+//   · 계좌별로 얼마가 들어가 있는지는 같은 행의 개인연금/DC/IRP 열에서 읽는다
+// ⚠ 종전 pfFilter는 account === '개인연금' **정확일치**라
+//    `개인연금(인출가)` 계좌 두 개가 통째로 빠져 있었다. 지금은 접두사로 잡아 포함한다.
 // =====================================================
-const _pfTargets = { pension: {}, dc: {} };
+const _pfTargets = {};
+const PF_BUCKETS = ['개인연금', 'DC', 'IRP'];
 
-function pfFilter(type) {
-  const stocks = loadStockData();
-  if (type === 'pension') return stocks.filter(s => s.category === '연금' && (s.account || '') === '개인연금');
-  return stocks.filter(s => s.category === '연금' && ((s.account || '').includes('DC') || (s.account || '').includes('IRP')));
+// 계좌명 → 세 묶음 중 하나. 셋 중 어디도 아니면 null (집계에서 제외)
+function pfBucket(s) {
+  const a = s.account || '';
+  if (a.startsWith('개인연금')) return '개인연금';
+  if (a.includes('DC'))  return 'DC';
+  if (a.includes('IRP')) return 'IRP';
+  return null;
+}
+
+function pfFilter() {
+  return loadStockData().filter(s => s.category === '연금' && pfBucket(s));
+}
+
+function pfAmt(s) { return (parseFloat(s.shares) || 0) * (parseFloat(s.price) || 0); }
+
+// 국가 x 계좌 교차 집계
+function pfAggregate() {
+  const list = pfFilter();
+  const cell = {}, byCountry = {}, byBucket = {};
+  let total = 0;
+  list.forEach(s => {
+    const c = s.country || '기타', b = pfBucket(s), v = pfAmt(s);
+    (cell[c] = cell[c] || {})[b] = (cell[c][b] || 0) + v;
+    byCountry[c] = (byCountry[c] || 0) + v;
+    byBucket[b]  = (byBucket[b]  || 0) + v;
+    total += v;
+  });
+  // 금액 큰 순 — 국가 수가 늘어도 중요한 것이 위에 온다
+  const countries = Object.keys(byCountry).sort((a, b) => byCountry[b] - byCountry[a]);
+  return { list, cell, byCountry, byBucket, total, countries };
+}
+
+function _pfMoneyCell(v, base, label) {
+  if (!v) return '<td style="text-align:right;color:#c0c6cc">-</td>';
+  const pct = base > 0 ? (v / base * 100).toFixed(1) : '0.0';
+  return `<td style="text-align:right">${Math.round(v).toLocaleString('ko-KR')}`
+       + `<div style="font-size:0.72rem;color:#888;font-weight:400">${label || ''}${pct}%</div></td>`;
 }
 
 function renderPortfolioTab() {
-  _renderPfSection('pension');
-  _renderPfSection('dc');
-}
-
-function _renderPfSection(type) {
-  const filtered = pfFilter(type);
-  const countryMap = {};
-  filtered.forEach(s => {
-    const c = s.country || '기타';
-    countryMap[c] = (countryMap[c] || 0) + (parseFloat(s.shares)||0)*(parseFloat(s.price)||0);
-  });
-  const totalAmt = Object.values(countryMap).reduce((a, b) => a + b, 0);
-  const countries = Object.keys(countryMap).sort();
-
-  countries.forEach(c => {
-    if (_pfTargets[type][c] == null)
-      _pfTargets[type][c] = Math.round((countryMap[c] / totalAmt) * 100);
+  const ag = pfAggregate();
+  ag.countries.forEach(c => {
+    if (_pfTargets[c] == null)
+      _pfTargets[c] = ag.total > 0 ? Math.round((ag.byCountry[c] / ag.total) * 100) : 0;
   });
 
-  const tbody = document.getElementById(`pfTbody-${type}`);
-  const tfoot = document.getElementById(`pfTfoot-${type}`);
+  const tbody = document.getElementById('pfTbody');
   if (!tbody) return;
 
-  tbody.innerHTML = countries.map(c => {
-    const amt = countryMap[c];
-    const pct = totalAmt > 0 ? ((amt / totalAmt) * 100).toFixed(1) : 0;
-    const target = _pfTargets[type][c] ?? '';
+  tbody.innerHTML = ag.countries.map(c => {
+    // 계좌 칸의 작은 숫자 = 그 계좌 안에서 이 국가가 차지하는 비중
+    const cells = PF_BUCKETS
+      .map(b => _pfMoneyCell((ag.cell[c] || {})[b] || 0, ag.byBucket[b] || 0))
+      .join('');
+    const amt = ag.byCountry[c];
+    const pct = ag.total > 0 ? (amt / ag.total * 100).toFixed(1) : '0.0';
     return `<tr>
-      <td>${c}</td>
-      <td style="text-align:right">${Math.round(amt).toLocaleString('ko-KR')}</td>
-      <td style="text-align:right">${pct}%</td>
+      <td style="font-weight:600">${c}</td>
+      ${cells}
+      <td style="text-align:right;font-weight:600">${Math.round(amt).toLocaleString('ko-KR')}</td>
+      <td style="text-align:right;font-weight:600">${pct}%</td>
       <td style="text-align:center">
-        <input type="number" class="form-control form-control-sm d-inline-block" style="width:75px;text-align:center"
-          min="0" max="100" step="1" value="${target}"
-          oninput="_pfTargets['${type}']['${c}']=parseFloat(this.value)||0; updatePortfolioTargetSum('${type}')">
+        <input type="number" class="form-control form-control-sm d-inline-block" style="width:70px;text-align:center"
+          min="0" max="100" step="1" value="${_pfTargets[c] ?? ''}"
+          oninput="_pfTargets['${c}']=parseFloat(this.value)||0; updatePortfolioTargetSum()">
       </td>
     </tr>`;
   }).join('');
 
-  _renderPfTfoot(type, totalAmt, countries);
-  document.getElementById(`pfResultCard-${type}`).style.display = 'none';
+  _renderPfTfoot(ag);
+  document.getElementById('pfResultCard').style.display = 'none';
 }
 
-function _renderPfTfoot(type, totalAmt, countries) {
-  const tfoot = document.getElementById(`pfTfoot-${type}`);
+function _renderPfTfoot(ag) {
+  const tfoot = document.getElementById('pfTfoot');
   if (!tfoot) return;
-  const total = countries ? countries.reduce((s, c) => s + (_pfTargets[type][c] || 0), 0)
-    : Object.values(_pfTargets[type]).reduce((a, b) => a + (b || 0), 0);
-  const amt = totalAmt ?? pfFilter(type).reduce((s, st) => s + (parseFloat(st.shares)||0)*(parseFloat(st.price)||0), 0);
-  const ok = total === 100;
+  const totalTarget = ag.countries.reduce((s, c) => s + (_pfTargets[c] || 0), 0);
+  const ok = totalTarget === 100;
+  // 합계 행의 작은 숫자 = 그 계좌가 연금 전체에서 차지하는 비중
+  const cells = PF_BUCKETS
+    .map(b => _pfMoneyCell(ag.byBucket[b] || 0, ag.total, '전체의 '))
+    .join('');
   tfoot.innerHTML = `<tr style="font-weight:700;background:#f8fafc;">
-    <td>합계</td>
-    <td style="text-align:right">${Math.round(amt).toLocaleString('ko-KR')}</td>
+    <td>합계</td>${cells}
+    <td style="text-align:right">${Math.round(ag.total).toLocaleString('ko-KR')}</td>
     <td style="text-align:right">100%</td>
-    <td style="text-align:center;color:${ok?'#16a34a':'#dc2626'}">${total}% ${ok?'✅':'⚠️ 100% 맞춰주세요'}</td>
+    <td style="text-align:center;color:${ok ? '#16a34a' : '#dc2626'}">${totalTarget}% ${ok ? '✅' : '⚠️ 100%'}</td>
   </tr>`;
 }
 
-function updatePortfolioTargetSum(type) {
-  _renderPfTfoot(type, null, null);
-}
+function updatePortfolioTargetSum() { _renderPfTfoot(pfAggregate()); }
 
-function calcPortfolio(type) {
-  const filtered = pfFilter(type);
-  const countryMap = {};
-  filtered.forEach(s => {
-    const c = s.country || '기타';
-    countryMap[c] = (countryMap[c] || 0) + (parseFloat(s.shares)||0)*(parseFloat(s.price)||0);
-  });
-  const totalAmt = Object.values(countryMap).reduce((a, b) => a + b, 0);
-  const countries = Object.keys(countryMap).sort();
-
-  const totalTarget = countries.reduce((s, c) => s + (_pfTargets[type][c] || 0), 0);
+function calcPortfolio() {
+  const ag = pfAggregate();
+  const totalTarget = ag.countries.reduce((s, c) => s + (_pfTargets[c] || 0), 0);
   if (totalTarget !== 100) {
     alert(`목표 비율 합계가 ${totalTarget}%입니다. 100%가 되도록 조정해주세요.`);
     return;
   }
 
   let rows = '';
-  countries.forEach(country => {
-    const targetAmt = totalAmt * ((_pfTargets[type][country] || 0) / 100);
-    const currentAmt = countryMap[country] || 0;
+  ag.countries.forEach(country => {
+    const targetAmt  = ag.total * ((_pfTargets[country] || 0) / 100);
+    const currentAmt = ag.byCountry[country] || 0;
     const diff = targetAmt - currentAmt;
-    const cStocks = filtered.filter(s => (s.country || '기타') === country);
-    const cTotal = cStocks.reduce((s, st) => s + (parseFloat(st.shares)||0)*(parseFloat(st.price)||0), 0);
+    // 같은 국가 안에서는 계좌 순(개인연금 → DC → IRP)으로 묶어 보여준다
+    const cStocks = ag.list
+      .filter(s => (s.country || '기타') === country)
+      .sort((a, b) => PF_BUCKETS.indexOf(pfBucket(a)) - PF_BUCKETS.indexOf(pfBucket(b)));
+    const cTotal = cStocks.reduce((s, st) => s + pfAmt(st), 0);
 
     cStocks.forEach((s, idx) => {
-      const sAmt = (parseFloat(s.shares)||0)*(parseFloat(s.price)||0);
+      const sAmt  = pfAmt(s);
       const sDiff = diff * (cTotal > 0 ? sAmt / cTotal : 1 / cStocks.length);
       const tradeShares = Math.round(sDiff / (parseFloat(s.price) || 1));
       const tradeLabel = tradeShares > 0
@@ -2318,7 +2304,7 @@ function calcPortfolio(type) {
         : `<span style="color:#888">-</span>`;
       rows += `<tr>
         ${idx===0?`<td rowspan="${cStocks.length}" style="vertical-align:middle;font-weight:600">${country}</td>`:''}
-        <td>${s.owner||'-'}</td><td>${s.broker||'-'}</td><td>${s.stockName||'-'}</td>
+        <td>${s.account||'-'}</td><td>${s.owner||'-'}</td><td>${s.broker||'-'}</td><td>${s.stockName||'-'}</td>
         <td style="text-align:right">${(parseFloat(s.shares)||0).toLocaleString('ko-KR')}</td>
         <td style="text-align:right">${(parseFloat(s.price)||0).toLocaleString('ko-KR')}</td>
         <td style="text-align:right">${Math.round(sAmt).toLocaleString('ko-KR')}</td>
@@ -2330,9 +2316,9 @@ function calcPortfolio(type) {
     });
   });
 
-  document.getElementById(`pfResultTbody-${type}`).innerHTML = rows;
-  document.getElementById(`pfResultCard-${type}`).style.display = 'block';
-  document.getElementById(`pfResultCard-${type}`).scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('pfResultTbody').innerHTML = rows;
+  document.getElementById('pfResultCard').style.display = 'block';
+  document.getElementById('pfResultCard').scrollIntoView({ behavior: 'smooth' });
 }
 
 // =====================================================

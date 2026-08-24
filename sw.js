@@ -1,5 +1,5 @@
-// v20260822b: 주식 보유현황 표 열 너비를 내용에 맞춰 자동 계산 (index.html 고치면 이 버전도 올릴 것)
-const CACHE_NAME = 'finance-v20260822b';
+// v20260824a: 포트폴리오 탭 — 개인연금/DC+IRP 두 섹션을 연금 전체 한 표로 병합 (index.html 고치면 이 버전도 올릴 것)
+const CACHE_NAME = 'finance-v20260824a';
 const STATIC_ASSETS = [
   './',
   './index.html',
