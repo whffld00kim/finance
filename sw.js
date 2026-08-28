@@ -1,5 +1,5 @@
-// v20260828b: 포트폴리오 표 열 폭 고정 — 명의 탭 전환 시 레이아웃 안 움직이게 (index.html 고치면 이 버전도 올릴 것)
-const CACHE_NAME = 'finance-v20260828b';
+// v20260828c: 포트폴리오 표 압축 — 폴드 펼침 화면에 한 화면으로 (min-width 600, 패딩 축소) (index.html 고치면 이 버전도 올릴 것)
+const CACHE_NAME = 'finance-v20260828c';
 const STATIC_ASSETS = [
   './',
   './index.html',

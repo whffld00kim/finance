@@ -33,6 +33,8 @@
   table { font-size: 0.83rem; }
   th { background: #1a3c6e; color: #fff; text-align: center; white-space: nowrap; vertical-align: middle; }
   td { vertical-align: middle; }
+  /* 포트폴리오 표 — 폴드 펼침 화면(약 670px)에 한 화면으로 들어가게 여백 압축 (2026-08-28) */
+  #tab-portfolio .table th, #tab-portfolio .table td { padding: 0.4rem 0.45rem; }
   .table-summary th { background: #2563eb; }
   .amount-input { width: 130px; text-align: right; }
   .btn-calc { background: var(--primary); color: #fff; font-weight: 700; padding: 0.5rem 2rem; font-size: 0.95rem; }
@@ -461,15 +463,15 @@
         <div class="table-responsive">
           <!-- table-layout:fixed — 명의 탭을 오가도 열 폭이 내용(DC가 비는 김도연 등)에 따라
                움직이지 않게 고정한다. 좁은 화면(폴드 접힘)에서는 min-width만큼 가로 스크롤된다 (2026-08-28) -->
-          <table class="table table-bordered" style="table-layout:fixed;min-width:800px">
+          <table class="table table-bordered" style="table-layout:fixed;min-width:600px">
             <thead><tr>
-              <th style="width:72px">투자국가</th>
+              <th style="width:56px">투자국가</th>
               <th style="text-align:right">개인연금</th>
               <th style="text-align:right">DC</th>
               <th style="text-align:right">IRP</th>
-              <th style="text-align:right">합계 (원)</th>
-              <th style="width:78px;text-align:right">현재 비율</th>
-              <th style="width:110px;text-align:center">목표 비율 (%)</th>
+              <th style="width:112px;text-align:right">합계 (원)</th>
+              <th style="width:64px;text-align:right">현재 비율</th>
+              <th style="width:86px;text-align:center">목표 비율 (%)</th>
             </tr></thead>
             <tbody id="pfTbody"></tbody>
             <tfoot id="pfTfoot"></tfoot>
@@ -2268,7 +2270,7 @@ function renderPortfolioTab() {
       <td style="text-align:right;font-weight:600">${Math.round(amt).toLocaleString('ko-KR')}</td>
       <td style="text-align:right;font-weight:600">${pct}%</td>
       <td style="text-align:center">
-        <input type="number" class="form-control form-control-sm d-inline-block" style="width:70px;text-align:center"
+        <input type="number" class="form-control form-control-sm d-inline-block" style="width:56px;text-align:center"
           min="0" max="100" step="1" value="${_pfT()[c] ?? ''}"
           oninput="_pfT()['${c}']=parseFloat(this.value)||0; updatePortfolioTargetSum()">
       </td>
