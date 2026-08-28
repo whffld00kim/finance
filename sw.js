@@ -1,5 +1,5 @@
-// v20260824a: 포트폴리오 탭 — 개인연금/DC+IRP 두 섹션을 연금 전체 한 표로 병합 (index.html 고치면 이 버전도 올릴 것)
-const CACHE_NAME = 'finance-v20260824a';
+// v20260828a: 포트폴리오 탭 — 명의(전체/김민성/김도연) 필터 추가, 목표 비율은 명의별 (index.html 고치면 이 버전도 올릴 것)
+const CACHE_NAME = 'finance-v20260828a';
 const STATIC_ASSETS = [
   './',
   './index.html',

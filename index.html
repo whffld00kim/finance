@@ -454,7 +454,10 @@
 
       <!-- 연금 전체 (개인연금 + DC + IRP) -->
       <div class="section-card">
-        <div class="section-title mb-3">■ 연금 전체 (투자국가별)</div>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <div class="section-title mb-0">■ 연금 전체 (투자국가별)</div>
+          <div class="btn-group btn-group-sm" id="pfOwnerBtns" role="group"></div>
+        </div>
         <div class="table-responsive">
           <table class="table table-bordered">
             <thead><tr>
@@ -2179,8 +2182,25 @@ function refreshStockSummary(stocks) {
 // ⚠ 종전 pfFilter는 account === '개인연금' **정확일치**라
 //    `개인연금(인출가)` 계좌 두 개가 통째로 빠져 있었다. 지금은 접두사로 잡아 포함한다.
 // =====================================================
+// 명의 필터 (2026-08-28 추가) — '전체'는 종전 화면 그대로, 명의를 고르면 그 사람 계좌만 집계
+let _pfOwner = '전체';
+// 목표 비율은 명의별로 따로 기억한다 — _pfTargets[명의][국가]. 리밸런싱은 명의별 계좌 안에서 하는 것이라서다
 const _pfTargets = {};
+function _pfT() { return (_pfTargets[_pfOwner] = _pfTargets[_pfOwner] || {}); }
 const PF_BUCKETS = ['개인연금', 'DC', 'IRP'];
+
+function _pfOwners() {
+  const set = new Set(loadStockData().filter(s => s.category === '연금' && pfBucket(s)).map(s => s.owner || '기타'));
+  return ['전체', ...Array.from(set).sort((a, b) => (a === '김민성' ? -1 : b === '김민성' ? 1 : a.localeCompare(b, 'ko')))];
+}
+function pfSetOwner(o) { _pfOwner = o; renderPortfolioTab(); }
+function _renderPfOwnerBtns() {
+  const el = document.getElementById('pfOwnerBtns');
+  if (!el) return;
+  el.innerHTML = _pfOwners().map(o =>
+    `<button type="button" class="btn ${o === _pfOwner ? 'btn-primary' : 'btn-outline-secondary'}" onclick="pfSetOwner('${o}')">${o}</button>`
+  ).join('');
+}
 
 // 계좌명 → 세 묶음 중 하나. 셋 중 어디도 아니면 null (집계에서 제외)
 function pfBucket(s) {
@@ -2192,7 +2212,8 @@ function pfBucket(s) {
 }
 
 function pfFilter() {
-  return loadStockData().filter(s => s.category === '연금' && pfBucket(s));
+  return loadStockData().filter(s => s.category === '연금' && pfBucket(s)
+    && (_pfOwner === '전체' || (s.owner || '') === _pfOwner));
 }
 
 function pfAmt(s) { return (parseFloat(s.shares) || 0) * (parseFloat(s.price) || 0); }
@@ -2222,10 +2243,11 @@ function _pfMoneyCell(v, base, label) {
 }
 
 function renderPortfolioTab() {
+  _renderPfOwnerBtns();
   const ag = pfAggregate();
   ag.countries.forEach(c => {
-    if (_pfTargets[c] == null)
-      _pfTargets[c] = ag.total > 0 ? Math.round((ag.byCountry[c] / ag.total) * 100) : 0;
+    if (_pfT()[c] == null)
+      _pfT()[c] = ag.total > 0 ? Math.round((ag.byCountry[c] / ag.total) * 100) : 0;
   });
 
   const tbody = document.getElementById('pfTbody');
@@ -2245,8 +2267,8 @@ function renderPortfolioTab() {
       <td style="text-align:right;font-weight:600">${pct}%</td>
       <td style="text-align:center">
         <input type="number" class="form-control form-control-sm d-inline-block" style="width:70px;text-align:center"
-          min="0" max="100" step="1" value="${_pfTargets[c] ?? ''}"
-          oninput="_pfTargets['${c}']=parseFloat(this.value)||0; updatePortfolioTargetSum()">
+          min="0" max="100" step="1" value="${_pfT()[c] ?? ''}"
+          oninput="_pfT()['${c}']=parseFloat(this.value)||0; updatePortfolioTargetSum()">
       </td>
     </tr>`;
   }).join('');
@@ -2258,7 +2280,7 @@ function renderPortfolioTab() {
 function _renderPfTfoot(ag) {
   const tfoot = document.getElementById('pfTfoot');
   if (!tfoot) return;
-  const totalTarget = ag.countries.reduce((s, c) => s + (_pfTargets[c] || 0), 0);
+  const totalTarget = ag.countries.reduce((s, c) => s + (_pfT()[c] || 0), 0);
   const ok = totalTarget === 100;
   // 합계 행의 작은 숫자 = 그 계좌가 연금 전체에서 차지하는 비중
   const cells = PF_BUCKETS
@@ -2276,7 +2298,7 @@ function updatePortfolioTargetSum() { _renderPfTfoot(pfAggregate()); }
 
 function calcPortfolio() {
   const ag = pfAggregate();
-  const totalTarget = ag.countries.reduce((s, c) => s + (_pfTargets[c] || 0), 0);
+  const totalTarget = ag.countries.reduce((s, c) => s + (_pfT()[c] || 0), 0);
   if (totalTarget !== 100) {
     alert(`목표 비율 합계가 ${totalTarget}%입니다. 100%가 되도록 조정해주세요.`);
     return;
@@ -2284,7 +2306,7 @@ function calcPortfolio() {
 
   let rows = '';
   ag.countries.forEach(country => {
-    const targetAmt  = ag.total * ((_pfTargets[country] || 0) / 100);
+    const targetAmt  = ag.total * ((_pfT()[country] || 0) / 100);
     const currentAmt = ag.byCountry[country] || 0;
     const diff = targetAmt - currentAmt;
     // 같은 국가 안에서는 계좌 순(개인연금 → DC → IRP)으로 묶어 보여준다
