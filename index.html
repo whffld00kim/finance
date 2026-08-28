@@ -459,15 +459,17 @@
           <div class="btn-group btn-group-sm" id="pfOwnerBtns" role="group"></div>
         </div>
         <div class="table-responsive">
-          <table class="table table-bordered">
+          <!-- table-layout:fixed — 명의 탭을 오가도 열 폭이 내용(DC가 비는 김도연 등)에 따라
+               움직이지 않게 고정한다. 좁은 화면(폴드 접힘)에서는 min-width만큼 가로 스크롤된다 (2026-08-28) -->
+          <table class="table table-bordered" style="table-layout:fixed;min-width:800px">
             <thead><tr>
-              <th style="width:80px">투자국가</th>
+              <th style="width:72px">투자국가</th>
               <th style="text-align:right">개인연금</th>
               <th style="text-align:right">DC</th>
               <th style="text-align:right">IRP</th>
               <th style="text-align:right">합계 (원)</th>
-              <th style="width:85px;text-align:right">현재 비율</th>
-              <th style="width:120px;text-align:center">목표 비율 (%)</th>
+              <th style="width:78px;text-align:right">현재 비율</th>
+              <th style="width:110px;text-align:center">목표 비율 (%)</th>
             </tr></thead>
             <tbody id="pfTbody"></tbody>
             <tfoot id="pfTfoot"></tfoot>

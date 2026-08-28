@@ -1,5 +1,5 @@
-// v20260828a: 포트폴리오 탭 — 명의(전체/김민성/김도연) 필터 추가, 목표 비율은 명의별 (index.html 고치면 이 버전도 올릴 것)
-const CACHE_NAME = 'finance-v20260828a';
+// v20260828b: 포트폴리오 표 열 폭 고정 — 명의 탭 전환 시 레이아웃 안 움직이게 (index.html 고치면 이 버전도 올릴 것)
+const CACHE_NAME = 'finance-v20260828b';
 const STATIC_ASSETS = [
   './',
   './index.html',
