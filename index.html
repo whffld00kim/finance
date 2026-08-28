@@ -463,15 +463,23 @@
         <div class="table-responsive">
           <!-- table-layout:fixed — 명의 탭을 오가도 열 폭이 내용(DC가 비는 김도연 등)에 따라
                움직이지 않게 고정한다. 좁은 화면(폴드 접힘)에서는 min-width만큼 가로 스크롤된다 (2026-08-28) -->
-          <table class="table table-bordered" style="table-layout:fixed;min-width:600px">
+          <table class="table table-bordered" style="table-layout:fixed;width:100%;min-width:600px">
+            <!-- colgroup으로 열 폭을 못박는다 — tbody를 다시 그려도(명의 전환) 열이 움직이지 않게 -->
+            <colgroup>
+              <col style="width:56px">
+              <col><col><col>
+              <col style="width:112px">
+              <col style="width:64px">
+              <col style="width:86px">
+            </colgroup>
             <thead><tr>
-              <th style="width:56px">투자국가</th>
+              <th>투자국가</th>
               <th style="text-align:right">개인연금</th>
               <th style="text-align:right">DC</th>
               <th style="text-align:right">IRP</th>
-              <th style="width:112px;text-align:right">합계 (원)</th>
-              <th style="width:64px;text-align:right">현재 비율</th>
-              <th style="width:86px;text-align:center">목표 비율 (%)</th>
+              <th style="text-align:right">합계 (원)</th>
+              <th style="text-align:right">현재 비율</th>
+              <th style="text-align:center">목표 비율 (%)</th>
             </tr></thead>
             <tbody id="pfTbody"></tbody>
             <tfoot id="pfTfoot"></tfoot>
@@ -2265,7 +2273,7 @@ function renderPortfolioTab() {
     const amt = ag.byCountry[c];
     const pct = ag.total > 0 ? (amt / ag.total * 100).toFixed(1) : '0.0';
     return `<tr>
-      <td style="font-weight:600">${c}</td>
+      <td style="font-weight:600;text-align:center">${c}</td>
       ${cells}
       <td style="text-align:right;font-weight:600">${Math.round(amt).toLocaleString('ko-KR')}</td>
       <td style="text-align:right;font-weight:600">${pct}%</td>
@@ -2291,7 +2299,7 @@ function _renderPfTfoot(ag) {
     .map(b => _pfMoneyCell(ag.byBucket[b] || 0, ag.total, '전체의 '))
     .join('');
   tfoot.innerHTML = `<tr style="font-weight:700;background:#f8fafc;">
-    <td>합계</td>${cells}
+    <td style="text-align:center">합계</td>${cells}
     <td style="text-align:right">${Math.round(ag.total).toLocaleString('ko-KR')}</td>
     <td style="text-align:right">100%</td>
     <td style="text-align:center;color:${ok ? '#16a34a' : '#dc2626'}">${totalTarget}% ${ok ? '✅' : '⚠️ 100%'}</td>
