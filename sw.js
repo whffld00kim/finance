@@ -1,5 +1,5 @@
 // v20260902: 하드코딩 초기 자산·과거 스냅샷 제거 (클라우드로 이동) (index.html 고치면 이 버전도 올릴 것)
-const CACHE_NAME = 'finance-v20260902';
+const CACHE_NAME = 'finance-v20260902b';
 const STATIC_ASSETS = [
   './',
   './index.html',
