@@ -739,10 +739,23 @@ function signInWithGoogle() {
   });
 }
 
+// 사용자 문자열을 innerHTML에 넣기 전에 항상 거친다 (S12, 2026-09-03).
+// 항목명·소유자·종목명은 사람이 입력한 값이라 <script>나 따옴표가 들어오면 그대로 실행됐다.
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// 로그아웃하면 이 기기의 자산·주식 캐시를 지운다 (S12). 로그아웃 뒤에도 남아 있으면
+// 다음 사람이 같은 브라우저를 열어 잠금 화면 뒤의 localStorage를 그대로 볼 수 있다.
+function clearLocalCache() {
+  for (const k of [STORAGE_KEY, STOCK_KEY_LS, 'stockDate', 'finance_hidden_rows']) {
+    try { localStorage.removeItem(k); } catch {}
+  }
+}
+
 function signOut() {
   if (!confirm('로그아웃 하시겠습니까?')) return;
-  auth.signOut();
-  location.reload();
+  auth.signOut().finally(() => { clearLocalCache(); location.reload(); });
 }
 
 // 로그인 상태가 정해진 뒤에야 데이터를 읽는다.
@@ -771,6 +784,7 @@ auth.onAuthStateChanged(async user => {
   if (role !== 'admin' && role !== 'viewer') {
     lockMessage('접근이 허용되지 않은 계정입니다: ' + (user.email || user.uid), true);
     if (btn) btn.disabled = false;
+    clearLocalCache();
     await auth.signOut();
     return;
   }
@@ -1154,14 +1168,14 @@ function renderEntryTable() {
         const amStr = am ? am.toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : '-';
         html += `<tr data-id="${e.id}">
           <td class="text-center" style="min-width:80px">
-            <input class="cell-input" value="${e.category || ''}" onchange="updateField('${e.id}','category',this.value)" placeholder="분류">
+            <input class="cell-input" value="${escHtml(e.category)}" onchange="updateField('${e.id}','category',this.value)" placeholder="분류">
           </td>
           <td>
-            <input type="text" class="cell-input" value="${e.item || ''}" placeholder="항목명"
+            <input type="text" class="cell-input" value="${escHtml(e.item)}" placeholder="항목명"
               onchange="updateField('${e.id}','item',this.value)">
           </td>
           <td class="text-center">
-            <input type="text" class="cell-input" style="text-align:center" value="${e.owner || ''}" placeholder="소유자"
+            <input type="text" class="cell-input" style="text-align:center" value="${escHtml(e.owner)}" placeholder="소유자"
               onchange="updateField('${e.id}','owner',this.value)">
           </td>
           <td class="text-end">
@@ -1339,7 +1353,7 @@ function renderCategoryBreakdown(row) {
   cats.forEach(c => {
     const pct = total > 0 ? (c.val / total * 100) : 0;
     html += `<tr>
-      <td><span class="badge badge-category cat-${c.name}">${c.name}</span></td>
+      <td><span class="badge badge-category cat-${escHtml(c.name)}">${escHtml(c.name)}</span></td>
       <td class="text-end fw-semibold">${fmt(c.val)} 만원</td>
       <td style="width:100px">
         <div class="progress" style="height:12px">
@@ -1371,7 +1385,7 @@ function renderOwnerBreakdown(entries, year) {
     cats.forEach((cat, ci) => {
       const total = ownerEntries.filter(e => e.category === cat).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0) / 10000;
       html += `<tr>
-        ${ci === 0 ? `<td rowspan="${cats.length}" class="align-middle fw-semibold">${owner}</td>` : ''}
+        ${ci === 0 ? `<td rowspan="${cats.length}" class="align-middle fw-semibold">${escHtml(owner)}</td>` : ''}
         <td>${catBadge(cat)}</td>
         <td class="text-end">${fmt(total)}</td>
       </tr>`;
@@ -2145,7 +2159,7 @@ function refreshStockSummary(stocks) {
     // 나머지 소유자 행
     ownerEntries.slice(1).forEach(([owner, ow]) => {
       rows += `<tr>
-        <td>${owner}</td>
+        <td>${escHtml(owner)}</td>
         <td style="text-align:right">${fmt(Math.round(ow.total))}</td>
         <td style="text-align:right">${grandTotal > 0 ? (ow.total / grandTotal * 100).toFixed(1) : '0.0'}%</td>
         <td style="text-align:right">${ow.count}개</td>
@@ -2326,8 +2340,8 @@ function calcPortfolio() {
         ? `<span style="color:#dc2626;font-weight:700">▼ ${Math.abs(tradeShares).toLocaleString('ko-KR')}주 매도</span>`
         : `<span style="color:#888">-</span>`;
       rows += `<tr>
-        ${idx===0?`<td rowspan="${cStocks.length}" style="vertical-align:middle;font-weight:600">${country}</td>`:''}
-        <td>${s.account||'-'}</td><td>${s.owner||'-'}</td><td>${s.broker||'-'}</td><td>${s.stockName||'-'}</td>
+        ${idx===0?`<td rowspan="${cStocks.length}" style="vertical-align:middle;font-weight:600">${escHtml(country)}</td>`:''}
+        <td>${escHtml(s.account||'-')}</td><td>${escHtml(s.owner||'-')}</td><td>${escHtml(s.broker||'-')}</td><td>${escHtml(s.stockName||'-')}</td>
         <td style="text-align:right">${(parseFloat(s.shares)||0).toLocaleString('ko-KR')}</td>
         <td style="text-align:right">${(parseFloat(s.price)||0).toLocaleString('ko-KR')}</td>
         <td style="text-align:right">${Math.round(sAmt).toLocaleString('ko-KR')}</td>
@@ -2411,7 +2425,7 @@ function renderQtyTab() {
     const qty    = r.price > 0 ? (invest * 10000 / r.price) : 0;
     rows += `
     <tr>
-      <td><input type="text" class="cell-input" value="${r.asset}"
+      <td><input type="text" class="cell-input" value="${escHtml(r.asset)}"
         onchange="qtySet(${r.id},'asset',this.value)" placeholder="자산명"></td>
       <td style="text-align:center;">
         <input type="number" class="cell-input" style="width:52px;text-align:center;"
@@ -2424,7 +2438,7 @@ function renderQtyTab() {
           oninput="qtySet(${r.id},'price',this.value)">
       </td>
       <td id="qty-qty-${r.id}" style="text-align:right;font-weight:700;color:var(--accent);">${qty.toFixed(1)}</td>
-      <td><input type="text" class="cell-input" value="${r.ticker}"
+      <td><input type="text" class="cell-input" value="${escHtml(r.ticker)}"
         onchange="qtySet(${r.id},'ticker',this.value)" placeholder="종목명"></td>
       <td class="admin-only" style="text-align:center;">
         <button class="delete-btn" onclick="qtyDeleteRow(${r.id})" title="삭제">✕</button>
