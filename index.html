@@ -514,8 +514,9 @@
           </table>
         </div>
         <small class="text-muted d-block mt-2">
-          ※ 차이 금액은 그 국가 안에서 <b>현재 금액에 비례해</b> 종목별로 나눈다.
-          예수금·MMF·펀드처럼 수량을 모르는 행(1주로 넣은 항목)은 주수 대신 금액으로 읽을 것.
+          ※ 매매는 그 국가에서 <b>수량이 가장 많은 종목 한 곳에 몰아서</b> 잡는다 (노란 행).
+          매도는 그 행의 보유 수량을 넘지 않고, 모자라면 다음으로 많은 행에 이어서 잡는다.
+          예수금·MMF·펀드처럼 수량을 모르는 행(1주로 넣은 항목)은 매매 대상에서 뺀다.
         </small>
       </div>
 
@@ -2336,18 +2337,37 @@ function calcPortfolio() {
     const cStocks = ag.list
       .filter(s => (s.country || '기타') === country)
       .sort((a, b) => PF_BUCKETS.indexOf(pfBucket(a)) - PF_BUCKETS.indexOf(pfBucket(b)));
-    const cTotal = cStocks.reduce((s, st) => s + pfAmt(st), 0);
+    // 매매는 **수량이 가장 많은 행 하나에 몰아준다** (2026-09-05). 종전엔 차이를 모든 행에
+    // 금액 비례로 쪼개서 국가마다 8~10건씩 나왔다 — 실제로 그렇게 주문하는 사람은 없다.
+    //   · 후보는 수량을 아는 행만 (shares > 1). 예수금·MMF·펀드처럼 1주로 넣은 자리표시 행은 뺀다
+    //   · 매수: 수량 1위 행 한 곳에 전부
+    //   · 매도: 수량 1위 행에서 팔 수 있는 만큼(보유 수량 한도) 팔고, 모자라면 2위 행으로 넘긴다
+    const trade = new Map();  // s → 주수 (+매수 / −매도)
+    const cands = cStocks.filter(st => (parseFloat(st.shares) || 0) > 1 && (parseFloat(st.price) || 0) > 0)
+      .sort((a, b) => (parseFloat(b.shares) || 0) - (parseFloat(a.shares) || 0));
+    if (diff > 0 && cands.length) {
+      trade.set(cands[0], Math.round(diff / parseFloat(cands[0].price)));
+    } else if (diff < 0) {
+      let remain = -diff;
+      for (const st of cands) {
+        const price = parseFloat(st.price), have = parseFloat(st.shares);
+        const n = Math.min(have, Math.round(remain / price));
+        if (n <= 0) break;
+        trade.set(st, -n);
+        remain -= n * price;
+        if (remain < price / 2) break;
+      }
+    }
 
     cStocks.forEach((s, idx) => {
       const sAmt  = pfAmt(s);
-      const sDiff = diff * (cTotal > 0 ? sAmt / cTotal : 1 / cStocks.length);
-      const tradeShares = Math.round(sDiff / (parseFloat(s.price) || 1));
+      const tradeShares = trade.get(s) || 0;
       const tradeLabel = tradeShares > 0
         ? `<span style="color:#16a34a;font-weight:700">▲ ${tradeShares.toLocaleString('ko-KR')}주 매수</span>`
         : tradeShares < 0
         ? `<span style="color:#dc2626;font-weight:700">▼ ${Math.abs(tradeShares).toLocaleString('ko-KR')}주 매도</span>`
         : `<span style="color:#888">-</span>`;
-      rows += `<tr>
+      rows += `<tr${tradeShares!==0?' style="background:#fffbe6"':''}>
         ${idx===0?`<td rowspan="${cStocks.length}" style="vertical-align:middle;font-weight:600">${escHtml(country)}</td>`:''}
         <td>${escHtml(s.account||'-')}</td><td>${escHtml(s.owner||'-')}</td><td>${escHtml(s.broker||'-')}</td><td>${escHtml(s.stockName||'-')}</td>
         <td style="text-align:right">${(parseFloat(s.shares)||0).toLocaleString('ko-KR')}</td>
