@@ -502,13 +502,12 @@
           <table class="table table-bordered">
             <thead><tr>
               <th>투자국가</th><th>계좌</th><th>소유자</th><th>증권명</th><th>종목명</th>
+              <th style="text-align:center">매매</th>
               <th style="text-align:right">현재 주수</th>
               <th style="text-align:right">현재가 (원)</th>
               <th style="text-align:right">현재 금액 (원)</th>
               <th style="text-align:right">목표 금액 (원)</th>
               <th style="text-align:right">차이 (원)</th>
-              <th style="text-align:right">매매 주수</th>
-              <th style="text-align:center">매매</th>
             </tr></thead>
             <tbody id="pfResultTbody"></tbody>
           </table>
@@ -2370,13 +2369,12 @@ function calcPortfolio() {
       rows += `<tr${tradeShares!==0?' style="background:#fffbe6"':''}>
         ${idx===0?`<td rowspan="${cStocks.length}" style="vertical-align:middle;font-weight:600">${escHtml(country)}</td>`:''}
         <td>${escHtml(s.account||'-')}</td><td>${escHtml(s.owner||'-')}</td><td>${escHtml(s.broker||'-')}</td><td>${escHtml(s.stockName||'-')}</td>
+        <td style="text-align:center;white-space:nowrap">${tradeLabel}</td>
         <td style="text-align:right">${(parseFloat(s.shares)||0).toLocaleString('ko-KR')}</td>
         <td style="text-align:right">${(parseFloat(s.price)||0).toLocaleString('ko-KR')}</td>
         <td style="text-align:right">${Math.round(sAmt).toLocaleString('ko-KR')}</td>
         ${idx===0?`<td rowspan="${cStocks.length}" style="vertical-align:middle;text-align:right">${Math.round(targetAmt).toLocaleString('ko-KR')}</td>
         <td rowspan="${cStocks.length}" style="vertical-align:middle;text-align:right;color:${diff>=0?'#16a34a':'#dc2626'}">${diff>=0?'+':''}${Math.round(diff).toLocaleString('ko-KR')}</td>`:''}
-        <td style="text-align:right">${tradeShares!==0?Math.abs(tradeShares).toLocaleString('ko-KR')+'주':'-'}</td>
-        <td style="text-align:center">${tradeLabel}</td>
       </tr>`;
     });
   });
