@@ -2226,16 +2226,16 @@ function pfBucket(s) {
   return null;
 }
 
-function pfFilter() {
+function pfFilter(owner = _pfOwner) {
   return loadStockData().filter(s => s.category === '연금' && pfBucket(s)
-    && (_pfOwner === '전체' || (s.owner || '') === _pfOwner));
+    && (owner === '전체' || (s.owner || '') === owner));
 }
 
 function pfAmt(s) { return (parseFloat(s.shares) || 0) * (parseFloat(s.price) || 0); }
 
 // 국가 x 계좌 교차 집계
-function pfAggregate() {
-  const list = pfFilter();
+function _pfAggregateFor(owner) {
+  const list = pfFilter(owner);
   const cell = {}, byCountry = {}, byBucket = {};
   let total = 0;
   list.forEach(s => {
@@ -2248,6 +2248,14 @@ function pfAggregate() {
   // 금액 큰 순 — 국가 수가 늘어도 중요한 것이 위에 온다
   const countries = Object.keys(byCountry).sort((a, b) => byCountry[b] - byCountry[a]);
   return { list, cell, byCountry, byBucket, total, countries };
+}
+function pfAggregate() {
+  const ag = _pfAggregateFor(_pfOwner);
+  // 행 순서는 명의와 무관하게 **연금 전체 금액 순**으로 고정한다 (2026-09-05).
+  // 종전엔 명의별 금액 순이라 전체/김민성/김도연 탭을 오갈 때 한국·미국 행이 자리를 바꿨다.
+  // 그 명의가 안 가진 국가도 행을 남긴다('-') — 탭을 옮겨도 표 모양이 같아야 눈으로 비교가 된다
+  if (_pfOwner !== '전체') ag.countries = _pfAggregateFor('전체').countries;
+  return ag;
 }
 
 function _pfMoneyCell(v, base, label) {
@@ -2262,7 +2270,7 @@ function renderPortfolioTab() {
   const ag = pfAggregate();
   ag.countries.forEach(c => {
     if (_pfT()[c] == null)
-      _pfT()[c] = ag.total > 0 ? Math.round((ag.byCountry[c] / ag.total) * 100) : 0;
+      _pfT()[c] = ag.total > 0 ? Math.round(((ag.byCountry[c] || 0) / ag.total) * 100) : 0;
   });
 
   const tbody = document.getElementById('pfTbody');
@@ -2273,7 +2281,7 @@ function renderPortfolioTab() {
     const cells = PF_BUCKETS
       .map(b => _pfMoneyCell((ag.cell[c] || {})[b] || 0, ag.byBucket[b] || 0))
       .join('');
-    const amt = ag.byCountry[c];
+    const amt = ag.byCountry[c] || 0;  // 이 명의가 안 가진 국가는 0 (행은 남긴다)
     const pct = ag.total > 0 ? (amt / ag.total * 100).toFixed(1) : '0.0';
     return `<tr>
       <td style="font-weight:600;text-align:center">${c}</td>
