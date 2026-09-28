@@ -200,6 +200,128 @@
   #appLockScreen .lock-btn-google:hover { background: #f8f9fa; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
   #appLockScreen .lock-btn-google:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
 
+  /* ============ 태블릿 가로 (2026-09-28) ============
+     갤럭시 탭을 가로로 두고 쓸 때(CSS 약 1323×804). 폰 화면(위 규칙 전부)은 건드리지 않고 넓을 때만 덮어쓴다.
+     - 본문 폭은 1320px에서 멈추고 가운데로 (더 넓은 화면에서 표가 끝없이 늘지 않게)
+     - 페이지를 화면 높이만큼 세우고 카드가 남는 높이를 나눠 갖는다 — 아래 절반이 비지 않게.
+       높이는 min-height라 내용이 많으면(자산 입력 표, 매매 계획) 그대로 아래로 늘어난다
+     - 자산 분석 그래프 넷은 같은 높이의 2×2
+     - 글자·탭 버튼을 조금 키운다 (팔 길이에서 보는 화면)
+     이 블록은 <style> 맨 끝에 둔다 */
+  @media (min-width: 900px) and (orientation: landscape) {
+    body {
+      font-size: 0.95rem;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+    body > .container-fluid.mt-3 {
+      flex: 1 0 auto;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 1320px;
+      margin-left: auto;
+      margin-right: auto;
+      padding-bottom: 1rem;
+    }
+    .navbar-brand { font-size: 1.25rem; }
+
+    /* ── 상단 요약 카드·탭 ── */
+    .metric-card { padding: 1rem 1.2rem; }
+    .metric-label { font-size: 0.88rem; }
+    .metric-value { font-size: 1.6rem; }
+    #mainTab .nav-link { padding: 0.7rem 1.25rem; font-size: 1rem; }
+
+    /* ── 탭 내용이 남는 높이를 채운다 ── */
+    .tab-content { flex: 1 0 auto; display: flex; flex-direction: column; }
+    .tab-content > .tab-pane.active { flex: 1 0 auto; display: flex; flex-direction: column; }
+    .section-card { padding: 1.5rem 1.75rem; }
+    .section-title { font-size: 1.1rem; }
+
+    /* 표 글자 */
+    table { font-size: 0.9rem; }
+    .cell-input, .cell-select, .qty-input { font-size: 0.9rem; }
+    .manwon-cell { font-size: 0.86rem; }
+    .badge-category { font-size: 0.84rem; }
+    .table > :not(caption) > * > * { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+    #tab-portfolio .table th, #tab-portfolio .table td { padding: 0.6rem 0.55rem; }
+    .btn-sm { font-size: 0.9rem; }
+
+    /* ── 자산 입력 · 수량 계산: 카드가 화면 끝까지 ── */
+    #tab-input > .section-card,
+    #tab-qty > .section-card { flex: 1 0 auto; margin-bottom: 0; }
+    #tab-qty .table > :not(caption) > * > * { padding-top: 0.85rem; padding-bottom: 0.85rem; }
+
+    /* ── 총자산 현황: 아래 두 카드가 남는 높이를 나눠 갖고 같은 높이로 ── */
+    #tab-summary > .row { flex: 1 0 auto; }
+    #tab-summary > .row > [class*="col-"] { display: flex; flex-direction: column; }
+    #tab-summary > .row > [class*="col-"] > .section-card { flex: 1 0 auto; margin-bottom: 0; }
+    #categoryBreakdown .table td, #ownerBreakdown .table td, #ownerBreakdown .table th { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+    #categoryBreakdown .progress { height: 14px !important; }
+
+    /* ── 자산 분석: 그래프 넷이 같은 높이의 2×2로 화면을 나눈다 ── */
+    #tab-chart > .row {
+      flex: 1 0 auto;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(330px, 1fr));
+      gap: 1rem;
+      margin: 0;
+    }
+    #tab-chart > .row > [class*="col-"] {
+      width: auto;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    #tab-chart .section-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 0;
+      min-height: 0;
+      padding: 1.25rem 1.5rem;
+    }
+    #tab-chart .section-title { margin-bottom: 0.6rem; }
+    /* 캔버스를 띄워 두어야 카드 높이가 그래프에 끌려가지 않는다 */
+    #tab-chart .chart-container { flex: 1; height: auto; min-height: 0; }
+    #tab-chart .chart-container canvas {
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* ── 주식 현황: 보유 표 스크롤 칸을 화면 높이에 맞춘다 ── */
+    .stock-table-wrap { max-height: max(380px, calc(100dvh - 380px)); }
+    .stock-filter-bar .form-control-sm { font-size: 0.9rem; }
+    #tab-stock > .section-card:last-child { flex: 1 0 auto; margin-bottom: 0; }
+
+    /* ── 포트폴리오: 계산 전에는 첫 카드가 화면 끝까지 — 표의 행이 남는 높이를 나눠 갖는다 ── */
+    #tab-portfolio > .section-card:first-child { flex: 1 0 auto; display: flex; flex-direction: column; }
+    #tab-portfolio > .section-card:first-child > .table-responsive { flex: 1 0 auto; display: flex; flex-direction: column; }
+    #tab-portfolio > .section-card:first-child > .table-responsive > table { flex: 1 0 auto; margin-bottom: 0; }
+    /* 글자를 키운 만큼 좁은 열(국가·합계·비율)을 넓힌다 — 폰에서는 inline 폭 그대로 */
+    #tab-portfolio col:nth-child(1) { width: 76px !important; }
+    #tab-portfolio col:nth-child(5) { width: 130px !important; }
+    #tab-portfolio col:nth-child(6) { width: 90px !important; }
+    #tab-portfolio col:nth-child(7) { width: 120px !important; }
+
+    /* ── 입력창: 화면 가운데 ── */
+    .modal-dialog {
+      max-width: 560px;
+      display: flex;
+      align-items: center;
+      min-height: calc(100% - 3.5rem);
+    }
+    .modal-body .form-control, .modal-body .form-select { font-size: 1rem; padding: 0.55rem 0.8rem; }
+    .modal-footer .btn { font-size: 0.95rem; padding: 0.4rem 1.1rem; }
+  }
+
 </style>
 </head>
 <body>
