@@ -1,5 +1,5 @@
 // v20260928: 태블릿 가로 화면 배치 (index.html 고치면 이 버전도 올릴 것)
-const CACHE_NAME = 'finance-v20260928c';
+const CACHE_NAME = 'finance-v20260929a';
 const STATIC_ASSETS = [
   './',
   './index.html',

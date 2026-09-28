@@ -193,6 +193,7 @@ html, body { overscroll-behavior-y: none; }
   #appLockScreen .lock-title { font-size: 1.25rem; font-weight: 700; color: #1a3c6e; margin-bottom: 0.2rem; }
   #appLockScreen .lock-sub { font-size: 0.82rem; color: #888; margin-bottom: 1.5rem; }
   #appLockScreen .lock-error { font-size: 0.82rem; color: #dc2626; margin-top: 0.75rem; min-height: 1.2em; }
+  #appLockScreen.resuming .lock-btn-google { display: none; }   /* 로그인했던 기기 (2026-09-29) */
   #appLockScreen .lock-btn-google {
     width: 100%; padding: 0.65rem; background: #fff; color: #3c4043;
     border: 1px solid #dadce0; border-radius: 10px;
@@ -344,6 +345,16 @@ html, body { overscroll-behavior-y: none; }
     <div class="lock-error" id="lockError"></div>
   </div>
 </div>
+<!-- 로그인했던 기기에서는 로그인 버튼 대신 "불러오는 중…"만 보인다 (2026-09-29 — 열 때마다 로그인 화면이 잠깐 비쳤다).
+     실제로 로그인이 풀렸으면 onAuthStateChanged가 표시를 지우고 버튼을 되살린다 -->
+<script>
+  try {
+    if (localStorage.getItem('signed_in_before')) {
+      document.getElementById('appLockScreen').classList.add('resuming');
+      document.getElementById('lockSub').textContent = '불러오는 중…';
+    }
+  } catch (e) {}
+</script>
 
 <nav class="navbar navbar-dark" style="background:var(--primary);">
   <div class="container-fluid flex-wrap gap-2">
@@ -895,6 +906,12 @@ auth.onAuthStateChanged(async user => {
     currentRole = null;
     isAdmin = false;
     if (btn) btn.disabled = false;
+    try { localStorage.removeItem('signed_in_before'); } catch {}
+    if (lock && lock.classList.contains('resuming')) {
+      lock.classList.remove('resuming');
+      const sub = document.getElementById('lockSub');
+      if (sub) sub.textContent = '구글 계정으로 로그인하세요';
+    }
     if (lock) { lock.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
     return;
   }
@@ -917,6 +934,7 @@ auth.onAuthStateChanged(async user => {
   }
 
   currentRole = role;
+  try { localStorage.setItem('signed_in_before', '1'); } catch {}
   if (lock) lock.style.display = 'none';
   document.body.style.overflow = '';
   updateAccountUI(user);
