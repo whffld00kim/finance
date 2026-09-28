@@ -298,6 +298,9 @@
 
     /* ── 주식 현황: 보유 표 스크롤 칸을 화면 높이에 맞춘다 ── */
     .stock-table-wrap { max-height: max(380px, calc(100dvh - 380px)); }
+    /* 표가 내용 폭(약 940px)에서 멈춰 오른쪽이 비었다 (2026-09-28 사용자 캡처) — 태블릿 가로에서는 칸 폭을 늘려 끝까지 채운다.
+       폰은 위의 width:auto 그대로(좁으면 가로 스크롤) */
+    #stockTable { width: 100%; }
     .stock-filter-bar .form-control-sm { font-size: 0.9rem; }
     #tab-stock > .section-card:last-child { flex: 1 0 auto; margin-bottom: 0; }
 
