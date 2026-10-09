@@ -161,6 +161,8 @@ html, body { overscroll-behavior-y: none; }
   body.viewer-mode .cell-select { pointer-events: none; cursor: default; color: inherit; }
   body.viewer-mode .delete-btn { display: none; }
   .lock-btn { font-size: 0.78rem; padding: 2px 10px; border-radius: 20px; font-weight: 600; transition: all 0.2s; }
+  /* 총자산 현황: 값 아래 증감 작은 글씨 — 폴드 펼친 화면에서만 보인다 (아래 fold 블록) */
+  .sum-sub { display: none; }
   /* 총자산 현황 행 숨기기 */
   .sum-row-hidden { display: none !important; }
   body.admin-mode .sum-row-hidden {
@@ -328,6 +330,35 @@ html, body { overscroll-behavior-y: none; }
     .modal-footer .btn { font-size: 0.95rem; padding: 0.4rem 1.1rem; }
   }
 
+  /* ============ 폴드7 펼친 화면 · 태블릿 세로 (2026-10-09) ============
+     폭 600 이상인데 태블릿 가로는 아닌 화면(폴드7 펼침 약 750×830, 탭 S7+ 세로).
+     사용자: 총자산 현황·주식 보유 현황 표가 가로로 길어 좌우로 밀어야 한다 → 한 화면에 들어가게.
+     규칙(LifeOS apps-internals/references/screen-layout.md): 글자는 폰 크기 근처, 자리만 — 표는 여백·열을 줄인다.
+     - 총자산 현황: 증감 5열을 숨기고 각 값 아래 작은 글씨로 (13열 → 8열)
+     - 주식 보유 현황: 여백 압축 + 긴 계좌명·종목명·증권명은 말줄임(누르면 편집칸이 넓어져 전체가 보인다) */
+  @media (min-width: 600px) and (max-width: 899px) and (min-height: 500px), (min-width: 600px) and (orientation: portrait) {
+    .section-card { padding: 1rem 0.85rem; }
+
+    /* ── 총자산 현황 ── */
+    #summaryTable .sum-chg { display: none; }
+    #summaryTable .sum-sub { display: block; font-size: 0.68rem; line-height: 1.15; font-weight: 400; margin-top: 1px; }
+    #summaryTable .col-total .sum-sub, #summaryTable .col-total .sum-sub * { color: #bfdbfe !important; }
+    .summary-table td, .summary-table th { padding: 0.35rem 0.35rem; font-size: 0.78rem; }
+    #summaryTable th { white-space: normal; line-height: 1.2; }
+
+    /* ── 주식 보유 현황 ── */
+    .stock-table-wrap { max-height: max(380px, calc(100dvh - 360px)); }
+    #stockTable { font-size: 0.76rem; }
+    #stockTable th, #stockTable td { padding: 0.3rem 0.25rem; }
+    #stockTable .cell-input { font-size: 0.76rem; }
+    #stockTable .sort-arrow { width: 8px; }
+    #stockTable .cw .sz { display: block; overflow: hidden; }
+    #stockTable td:nth-child(4) .sz { max-width: 6.5em; }   /* 계좌명 */
+    #stockTable td:nth-child(5) .sz { max-width: 9.5em; }   /* 종목명 */
+    #stockTable td:nth-child(9) .sz { max-width: 5em; }     /* 증권명 */
+    .stock-summary-table td, .stock-summary-table th { padding: 0.35rem 0.5rem; }
+  }
+
 </style>
 </head>
 <body>
@@ -460,11 +491,12 @@ html, body { overscroll-behavior-y: none; }
                 <th>유동자산</th>
                 <th class="col-total">순자산</th>
                 <th class="col-avail">가용자산<br><small>(연금제외)</small></th>
-                <th>순자산증감</th>
-                <th>부동산증감</th>
-                <th>부채증감</th>
-                <th>연금증감</th>
-                <th>유동자산증감</th>
+                <!-- 증감 5열은 폴드 펼친 화면(폭 600~899)에서 숨기고 각 값 아래 작은 글씨로 보인다 (.sum-sub, 2026-10-09) -->
+                <th class="sum-chg">순자산증감</th>
+                <th class="sum-chg">부동산증감</th>
+                <th class="sum-chg">부채증감</th>
+                <th class="sum-chg">연금증감</th>
+                <th class="sum-chg">유동자산증감</th>
                 <th style="width:32px" class="admin-only">삭제</th>
               </tr>
             </thead>
@@ -1459,17 +1491,17 @@ function renderSummaryTable() {
         <span style="font-size:1rem;line-height:1;opacity:${isHidden ? 0.5 : 1};">${isHidden ? '🙈' : '👁'}</span>
       </td>
       <td class="text-center fw-semibold">${r.date}</td>
-      <td>${fmt(r.부동산)}</td>
-      <td class="text-danger">${fmt(r.부채)}</td>
-      <td>${fmt(r.연금)}</td>
-      <td>${fmt(r.유동자산)}</td>
-      <td class="col-total">${fmt(r.순자산)}</td>
+      <td>${fmt(r.부동산)}<span class="sum-sub">${fmtChange(r._d부동산)}</span></td>
+      <td class="text-danger">${fmt(r.부채)}<span class="sum-sub">${fmtChange(r._d부채)}</span></td>
+      <td>${fmt(r.연금)}<span class="sum-sub">${fmtChange(r._d연금)}</span></td>
+      <td>${fmt(r.유동자산)}<span class="sum-sub">${fmtChange(r._d유동자산)}</span></td>
+      <td class="col-total">${fmt(r.순자산)}<span class="sum-sub">${fmtChange(r._d순자산)}</span></td>
       <td class="col-avail">${fmt(r.가용연금제외)}</td>
-      <td>${fmtChange(r._d순자산)}</td>
-      <td>${fmtChange(r._d부동산)}</td>
-      <td>${fmtChange(r._d부채)}</td>
-      <td>${fmtChange(r._d연금)}</td>
-      <td>${fmtChange(r._d유동자산)}</td>
+      <td class="sum-chg">${fmtChange(r._d순자산)}</td>
+      <td class="sum-chg">${fmtChange(r._d부동산)}</td>
+      <td class="sum-chg">${fmtChange(r._d부채)}</td>
+      <td class="sum-chg">${fmtChange(r._d연금)}</td>
+      <td class="sum-chg">${fmtChange(r._d유동자산)}</td>
       ${delBtn}
     </tr>`;
   });
@@ -1531,7 +1563,7 @@ function renderOwnerBreakdown(entries, year) {
       const total = ownerEntries.filter(e => e.category === cat).reduce((s, e) => s + (parseFloat(e.amount) || 0), 0) / 10000;
       html += `<tr>
         ${ci === 0 ? `<td rowspan="${cats.length}" class="align-middle fw-semibold">${escHtml(owner)}</td>` : ''}
-        <td>${catBadge(cat)}</td>
+        <td class="text-center">${catBadge(cat)}</td>
         <td class="text-end">${fmt(total)}</td>
       </tr>`;
     });
