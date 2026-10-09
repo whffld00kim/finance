@@ -348,7 +348,8 @@ html, body { overscroll-behavior-y: none; }
 
     /* ── 주식 보유 현황 ── */
     .stock-table-wrap { max-height: max(380px, calc(100dvh - 360px)); }
-    #stockTable { font-size: 0.76rem; }
+    /* 표가 내용 폭에서 멈춰 오른쪽이 비었다 (2026-10-09 사용자 캡처) — 칸을 늘려 끝까지 채운다. 내용이 더 넓으면 종전대로 가로 스크롤 */
+    #stockTable { width: 100%; font-size: 0.76rem; }
     #stockTable th, #stockTable td { padding: 0.3rem 0.25rem; }
     #stockTable .cell-input { font-size: 0.76rem; }
     #stockTable .sort-arrow { width: 8px; }
