@@ -792,9 +792,12 @@ function toggleSummaryRow(date) {
     hiddenSummaryRows.add(date);
   }
   const arr = [...hiddenSummaryRows];
-  // Firebase에 저장 (모든 기기 동기화), localStorage는 오프라인 대비
-  db.ref('hiddenRows').set(arr).catch(() => {});
-  localStorage.setItem('finance_hidden_rows', JSON.stringify(arr));
+  // Firebase에 저장 (모든 기기 동기화), localStorage는 오프라인 대비. 데모 모드에서는 저장 안 함 —
+  // 데모 날짜(2024.01.01 등)가 실제 과거 행 날짜와 같아 실제 행이 숨겨졌다 (2026-10-12)
+  if (!_demoMode) {
+    db.ref('hiddenRows').set(arr).catch(() => {});
+    localStorage.setItem('finance_hidden_rows', JSON.stringify(arr));
+  }
   renderSummaryTable();
   // 자산 분석 탭이 활성화 중이면 차트도 갱신
   if (document.getElementById('tab-chart')?.classList.contains('active')) {
@@ -995,6 +998,23 @@ function ensureArray(val) {
   return Object.values(val);
 }
 
+// 서버에서 읽은 finance를 앱이 기대하는 모양으로 맞춘다 (2026-10-12).
+// RTDB는 빈 배열을 키째 버리고(entries: [] → 키 없음), index에 구멍이 있으면 구멍 난 배열로 돌려준다.
+// 그대로 쓰면 [...data.entries]·find에서 TypeError가 나 첫 화면에서 멈췄다.
+function normalizeFinance(fin) {
+  const d = (fin && typeof fin === 'object') ? fin : { entries: [] };
+  d.entries = ensureArray(d.entries).filter(Boolean);
+  if (d.snapshots != null) d.snapshots = ensureArray(d.snapshots).filter(Boolean);
+  return d;
+}
+
+// 숨긴 행 목록은 서버 값이 정답이다. null(전부 해제)일 때 localStorage의 옛 목록을 쓰면
+// 다른 기기에서 해제한 행이 이 기기에선 계속 숨고, 다음 토글 때 옛 목록이 서버로 되올라갔다 (2026-10-12)
+function applyHiddenRows(arr) {
+  hiddenSummaryRows = new Set(Array.isArray(arr) ? arr.filter(Boolean) : []);
+  try { localStorage.setItem('finance_hidden_rows', JSON.stringify([...hiddenSummaryRows])); } catch {}
+}
+
 // =====================================================
 // DATA STORAGE
 // =====================================================
@@ -1016,19 +1036,18 @@ async function initData() {
     const fin = finSnap.val();
     const stk = stkSnap.val();
     const stkDate = stkDateSnap.val();
-    _financeData = fin || JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
-                       || { entries: JSON.parse(JSON.stringify(DEFAULT_2026)) };
-    _stockData   = ensureArray(stk) || JSON.parse(localStorage.getItem(STOCK_KEY_LS) || '[]');
+    _financeData = normalizeFinance(fin || JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+                       || { entries: JSON.parse(JSON.stringify(DEFAULT_2026)) });
+    _stockData   = ensureArray(stk).filter(Boolean);
     if (stkDate) localStorage.setItem('stockDate', stkDate);
     // 숨긴 행 Firebase에서 로드
-    const hiddenArr = hiddenSnap.val();
-    if (Array.isArray(hiddenArr)) hiddenSummaryRows = new Set(hiddenArr);
+    applyHiddenRows(hiddenSnap.val());
     if (status) { status.textContent = '🟢 Firebase 연결됨'; status.style.color = '#16a34a'; }
   } catch (e) {
     console.warn('Firebase 연결 실패 — localStorage 사용:', e.message);
-    _financeData = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
-                 || { entries: JSON.parse(JSON.stringify(DEFAULT_2026)) };
-    _stockData   = JSON.parse(localStorage.getItem(STOCK_KEY_LS) || '[]');
+    _financeData = normalizeFinance(JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+                 || { entries: JSON.parse(JSON.stringify(DEFAULT_2026)) });
+    _stockData   = ensureArray(JSON.parse(localStorage.getItem(STOCK_KEY_LS) || '[]')).filter(Boolean);
     if (status) { status.textContent = '🔴 오프라인 (로컬 저장)'; status.style.color = '#dc2626'; }
   }
   // 기존 데이터 마이그레이션: snapshots 없으면 entries에서 생성
@@ -1092,8 +1111,90 @@ function onGlobalFinanceDateChange(date) {
 
 function onGlobalStockDateChange(date) {
   if (!date) return;
+  if (_demoMode) return; // 데모 모드에서는 저장 안 함
   localStorage.setItem('stockDate', date);
   db.ref('stockDate').set(date).catch(() => {});
+}
+
+// =====================================================
+// 서버 구독 (2026-10-12)
+//   읽기는 시작 때 get() 한 번뿐이고 저장은 메모리 사본 전체를 set()으로 덮는다. 그래서 열어 둔 기기가
+//   PC(firebase CLI)나 다른 기기의 변경을 모른 채 저장하면 그 변경이 통째로 되돌아갔다.
+//   finance·stocks·hiddenRows·stockDate를 on('value')로 구독해 서버가 바뀌면 메모리 사본을 따라가게 한다.
+//   저장 방식은 그대로다(병합 없음). 표의 칸을 편집 중이면 메모리만 바꾸고, 화면은 편집이 끝난 뒤 그린다.
+// =====================================================
+const _pendingRenders = new Set();
+function focusIn(sel) {
+  const a = document.activeElement;
+  return !!(a && a.closest && a.closest(sel));
+}
+// 편집 중이던 표는 포커스가 표 밖으로 나간 뒤 그린다 (같은 표의 다른 칸으로 옮기면 계속 미룬다)
+document.addEventListener('focusout', () => setTimeout(() => {
+  if (!_pendingRenders.size || focusIn('#entryTbody, #stockTbody')) return;
+  const fns = [..._pendingRenders]; _pendingRenders.clear();
+  fns.forEach(fn => fn());
+}, 0));
+function renderFinanceViews() {
+  if (focusIn('#entryTbody')) _pendingRenders.add(renderFinanceViews);
+  else renderEntryTable();
+  updateMetricCards();
+  renderSummaryTable();
+  if (document.getElementById('tab-chart')?.classList.contains('active')) renderCharts();
+}
+function renderStockViews() {
+  if (focusIn('#stockTbody')) { _pendingRenders.add(renderStockViews); return; }
+  renderStockTab();
+}
+
+let _connWatched = false;
+function watchConnection() {
+  if (_connWatched) return;
+  _connWatched = true;
+  // 오프라인이면 set()은 거부되지 않고 SDK 큐에 쌓인다(재접속 때 보냄). 그래서 saveData의 .catch는
+  // 오프라인에선 오지 않고 상태가 '🟢 저장됨'으로 남았다 — 끊김은 여기서 알린다
+  db.ref('.info/connected').on('value', snap => {
+    const s = document.getElementById('sync-status');
+    if (!s) return;
+    if (snap.val() === true) { s.textContent = '🟢 Firebase 연결됨'; s.style.color = '#16a34a'; }
+    else { s.textContent = '⏳ 서버 연결 중...'; s.style.color = ''; }
+  });
+}
+
+function watchServer() {
+  // 로그아웃되면 서버가 구독을 끊으므로 로그인할 때마다 다시 건다 (off 뒤 on — 중복 등록 방지)
+  ['finance', 'stocks', 'hiddenRows', 'stockDate'].forEach(p => db.ref(p).off());
+  db.ref('finance').on('value', snap => {
+    try {
+      const fin = normalizeFinance(snap.val());
+      if (_demoMode) { _realDataBackup = fin; return; }
+      _financeData = fin;
+      renderFinanceViews();
+    } catch (e) { console.warn('finance 갱신 실패:', e.message); }
+  });
+  db.ref('stocks').on('value', snap => {
+    try {
+      const stocks = ensureArray(snap.val()).filter(Boolean);
+      if (_demoMode) { _realStockBackup = stocks; return; }
+      _stockData = stocks;
+      renderStockViews();
+    } catch (e) { console.warn('stocks 갱신 실패:', e.message); }
+  });
+  db.ref('hiddenRows').on('value', snap => {
+    try {
+      const arr = snap.val();
+      if (_demoMode) { _realHiddenBackup = new Set(Array.isArray(arr) ? arr.filter(Boolean) : []); return; }
+      applyHiddenRows(arr);
+      renderSummaryTable();
+      if (document.getElementById('tab-chart')?.classList.contains('active')) renderCharts();
+    } catch (e) { console.warn('hiddenRows 갱신 실패:', e.message); }
+  });
+  db.ref('stockDate').on('value', snap => {
+    const d = snap.val();
+    if (!d || _demoMode) return;
+    try { localStorage.setItem('stockDate', d); } catch {}
+    const el = document.getElementById('globalStockDate');
+    if (el && el !== document.activeElement) el.value = d;
+  });
 }
 
 // 초기 항목 — 비워 둔다. 실제 데이터는 전부 Firebase(finance.entries / finance.snapshots)에 있다.
@@ -1110,6 +1211,7 @@ let trendChart = null, pieChart = null, categoryChart = null, barChart = null;
 let _demoMode = false;
 let _realDataBackup = null;
 let _realStockBackup = null;
+let _realHiddenBackup = null;   // 데모 중 숨긴 행 토글이 실제 목록을 바꾸지 않게 (2026-10-12)
 
 const DEMO_FINANCE = {
   date: '2026-03-21',
@@ -1153,6 +1255,7 @@ function enterDemoMode() {
   _demoMode = true;
   _realDataBackup = _financeData;
   _realStockBackup = _stockData;
+  _realHiddenBackup = new Set(hiddenSummaryRows);
   _financeData = JSON.parse(JSON.stringify(DEMO_FINANCE));
   _stockData   = JSON.parse(JSON.stringify(DEMO_STOCKS));
   document.getElementById('demoBanner').style.display = 'block';
@@ -1164,6 +1267,9 @@ function exitDemoMode() {
   _demoMode = false;
   _financeData = _realDataBackup;
   _stockData   = _realStockBackup;
+  if (_realHiddenBackup) hiddenSummaryRows = _realHiddenBackup;
+  const sd = document.getElementById('globalStockDate');
+  if (sd) sd.value = localStorage.getItem('stockDate') || sd.value;
   document.getElementById('demoBanner').style.display = 'none';
   document.getElementById('demoBtn').classList.remove('d-none');
   renderAll();
@@ -1768,7 +1874,9 @@ function clearAllFinanceData() {
   if (!isAdmin) { requireAdmin(clearAllFinanceData); return; }
   const data = loadData();
   if (!confirm(`⚠️ 자산 입력 목록 ${data.entries.length}개를 모두 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`)) return;
-  const empty = { entries: [] };
+  // 총자산 현황 이력(snapshots)은 남긴다. 종전엔 { entries: [] }만 써서 RTDB가 빈 배열을 버리는 바람에
+  // /finance 노드가 통째로 사라져 과거 스냅샷까지 지워졌다 (2026-10-12)
+  const empty = { ...data, entries: [] };
   saveData(empty);
   _financeData = empty;
   renderEntryTable();
@@ -2787,32 +2895,44 @@ async function importData(event) {
 // 로그인 상태가 갱신될 때 두 번 불릴 수 있어 한 번만 돌도록 막아둔다.
 let _appStarted = false;
 async function startApp() {
-  if (_appStarted) return;
-  _appStarted = true;
+  // 화면 준비(이벤트 등록)는 한 번만. 데이터 읽기·서버 구독은 로그인할 때마다 —
+  // 로그인이 풀렸다 다시 들어오면 세션 시작 때 사본으로 계속 쓰던 것을 고침 (2026-10-12)
+  if (!_appStarted) {
+    _appStarted = true;
+
+    // Current date
+    const now = new Date();
+    document.getElementById('currentDateDisplay').textContent =
+      now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월 ' + now.getDate() + '일';
+
+    // Amount preview
+    document.getElementById('inp-amount').addEventListener('input', updateAmountPreview);
+
+    // Year filter
+    document.getElementById('yearFilter').addEventListener('change', renderEntryTable);
+
+    // Chart tab trigger
+    document.querySelector('[data-bs-target="#tab-chart"]').addEventListener('shown.bs.tab', () => {
+      renderCharts();
+    });
+
+    // 화면이 다시 보일 때(잠자기·앱 전환 뒤) 편집 중이던 칸의 포커스를 빼서 그 값이 저장되고(change),
+    // 그 사이 서버가 바뀌어 미뤄 둔 표가 그려지게 한다
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || _demoMode) return;
+      if (focusIn('#entryTbody, #stockTbody')) document.activeElement.blur();
+    });
+  }
 
   updateAdminUI();
-
-  // Current date
-  const now = new Date();
-  document.getElementById('currentDateDisplay').textContent =
-    now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월 ' + now.getDate() + '일';
-
-  // Amount preview
-  document.getElementById('inp-amount').addEventListener('input', updateAmountPreview);
-
-  // Year filter
-  document.getElementById('yearFilter').addEventListener('change', renderEntryTable);
-
-  // Chart tab trigger
-  document.querySelector('[data-bs-target="#tab-chart"]').addEventListener('shown.bs.tab', () => {
-    renderCharts();
-  });
 
   // 서버에서 데이터 로드 후 렌더링
   await initData();
   renderEntryTable();
   updateMetricCards();
   renderSummaryTable();
+  watchServer();
+  watchConnection();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
