@@ -1,8 +1,9 @@
-// Finance — 저장된 사본으로 먼저 열고, 뒤에서 새 파일을 받아 캐시를 바꿔 둔다 (2026-09-29, 투자 트래커와 같은 방식).
+// Finance — 저장된 사본으로 먼저 열고, 뒤에서 새 앱 파일을 받아 캐시를 바꿔 둔다 (2026-09-29, 투자 트래커와 같은 방식).
 // 그전엔 네트워크 우선이라 열 때마다 앱 파일·라이브러리 응답을 기다렸다.
+// 라이브러리(CDN)는 설치 때 받은 사본을 그대로 쓴다 (2026-10-12 — 아래 fetch 핸들러 주석).
 // ⚠ index.html을 고치면 CACHE 버전을 올린다. 새 버전이 설치되면 페이지가 스스로 새로고침해 바로 새 화면이 뜬다.
 // ⚠ index.html이 부르는 파일을 바꾸면 OWN·CDN 목록도 같이 고친다 (한 글자라도 다르면 미리 받아 둔 의미가 없다).
-const CACHE = 'finance-v20261009b';
+const CACHE = 'finance-v20261012a';
 
 // 이 앱의 파일
 const OWN = [
@@ -59,8 +60,12 @@ self.addEventListener('fetch', e => {
 
   e.respondWith(caches.open(CACHE).then(async cache => {
     const cached = await cache.match(req);
-    const fresh = (own ? fetch(req.url, { cache: 'no-cache' }) : fetch(req)).then(res => {
-      if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+    // 라이브러리(CDN)는 주소에 버전이 박혀 내용이 안 바뀐다 — 설치 때 받아 둔 사본을 그대로 쓴다.
+    // 페이지의 라이브러리 요청은 no-cors라 응답이 불투명(opaque)해서 404·5xx도 status 0으로 보인다.
+    // 종전처럼 백그라운드로 다시 받아 덮어쓰면 장애 응답이 좋은 사본을 밀어내 다음 실행이 먹통이 됐다 (2026-10-12)
+    if (!own) return cached || fetch(req);
+    const fresh = fetch(req.url, { cache: 'no-cache' }).then(res => {
+      if (res && res.ok) cache.put(req, res.clone());
       return res;
     });
     if (cached) { e.waitUntil(fresh.catch(() => {})); return cached; }

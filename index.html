@@ -2948,15 +2948,20 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 <script>
 if ('serviceWorker' in navigator) {
-  // 새 SW가 컨트롤을 가져가면 즉시 새로고침
+  // 새 SW가 컨트롤을 가져가면 즉시 새로고침. 편집 중이던 칸은 먼저 포커스를 빼서(change) 저장되게 한다 (2026-10-12)
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     window.location.reload();
   });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => {
         console.log('SW registered:', reg.scope);
-        reg.update(); // 열릴 때마다 업데이트 확인
+        reg.update().catch(() => {}); // 열릴 때마다 업데이트 확인
+        // 열어 둔 채 쓰는 기기는 load가 다시 오지 않는다 — 화면이 다시 보일 때도 확인한다 (2026-10-12)
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update().catch(() => {});
+        });
       })
       .catch(err => console.warn('SW registration failed:', err));
   });
