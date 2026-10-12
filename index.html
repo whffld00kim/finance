@@ -177,6 +177,9 @@ html, body { overscroll-behavior-y: none; }
   }
   .qty-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
   .qty-input.amount-field { text-align: right; }
+  /* 수량 계산 표의 행 입력칸은 잠금(열람) 상태에서도 편집된다 — 위 .qty-input 주석의 의도.
+     표가 .cell-input을 쓰고 있어 뷰어 모드 규칙에 막혀 상단 두 칸만 되고 행은 안 됐다 (2026-10-12) */
+  body.viewer-mode #qtyTableWrap .cell-input { pointer-events: auto; cursor: auto; }
   .qty-del-btn { color: #dc2626; cursor: pointer; border: none; background: none; font-size: 1rem; }
   .qty-del-btn:hover { color: #991b1b; }
 
