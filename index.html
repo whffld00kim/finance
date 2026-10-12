@@ -797,7 +797,7 @@ function toggleSummaryRow(date) {
   const arr = [...hiddenSummaryRows];
   // Firebase에 저장 (모든 기기 동기화), localStorage는 오프라인 대비. 데모 모드에서는 저장 안 함 —
   // 데모 날짜(2024.01.01 등)가 실제 과거 행 날짜와 같아 실제 행이 숨겨졌다 (2026-10-12)
-  if (!_demoMode) {
+  if (!_demoMode && serverReady('finance')) {
     db.ref('hiddenRows').set(arr).catch(() => {});
     localStorage.setItem('finance_hidden_rows', JSON.stringify(arr));
   }
@@ -1029,6 +1029,8 @@ let _stockData   = null;
 
 async function initData() {
   const status = document.getElementById('sync-status');
+  _serverLoaded.finance = _serverLoaded.stocks = false;   // 다시 로그인할 때도 새로 읽을 때까지 막는다
+  _blockWarned = false;
   try {
     const [finSnap, stkSnap, stkDateSnap, hiddenSnap] = await Promise.all([
       db.ref('finance').get(),
@@ -1045,6 +1047,7 @@ async function initData() {
     if (stkDate) localStorage.setItem('stockDate', stkDate);
     // 숨긴 행 Firebase에서 로드
     applyHiddenRows(hiddenSnap.val());
+    _serverLoaded.finance = _serverLoaded.stocks = true;
     if (status) { status.textContent = '🟢 Firebase 연결됨'; status.style.color = '#16a34a'; }
   } catch (e) {
     console.warn('Firebase 연결 실패 — localStorage 사용:', e.message);
@@ -1089,17 +1092,52 @@ async function initData() {
   if (stockDateEl) stockDateEl.value = savedStockDate;
 }
 
+// 항목에 있는 연도 목록 (오름차순)
+function entryYears(entries) {
+  return [...new Set((entries || []).map(e => (e.date || '').substring(0, 4)).filter(Boolean))].sort();
+}
+// 연도 필터 옵션을 항목에서 만든다 (2026-10-12, 점검 #12). 종전엔 2023~2026이 고정이라
+// 2027 항목이 생기면 고를 수 없었다. 고른 연도에 항목이 없으면 가장 최근 연도로 맞춘다.
+function refreshYearOptions(extraYear) {
+  const sel = document.getElementById('yearFilter');
+  if (!sel) return;
+  const years = entryYears(loadData().entries);
+  if (extraYear && !years.includes(extraYear)) years.push(extraYear);
+  years.sort().reverse();
+  const cur = sel.value;
+  sel.innerHTML = '<option value="all">전체 연도</option>' +
+    years.map(y => `<option value="${escHtml(y)}">${escHtml(y)}년</option>`).join('');
+  sel.value = (cur === 'all' || years.includes(cur)) ? cur : (years[0] || 'all');
+}
+
 function onGlobalFinanceDateChange(date) {
   if (!date) return;
   const year = date.substring(0, 4);
+  const data = loadData();
+  // 새해로 넘기기 (2026-10-12, 점검 #12): 항목이 없는 더 뒤 연도를 고르면 가장 최근 연도 항목을 전부 그 날짜로 옮긴다.
+  // 종전엔 "같은 연도 항목만" 날짜를 바꿔서, 2027-01-05를 고르면 아무것도 안 바뀌고 계산하면 0원 행이 생겼다.
+  // 옮겨도 지난해 값은 총자산 현황(snapshots)에 그대로 남는다. 항목 표는 "현재값 대장"이라 사본을 두지 않는다.
+  const years = entryYears(data.entries);
+  const latestYear = years[years.length - 1];
+  let fromYear = year;
+  if (latestYear && !years.includes(year) && year > latestYear) {
+    const n = data.entries.filter(e => (e.date || '').startsWith(latestYear)).length;
+    if (!confirm(`${latestYear}년 항목 ${n}개를 ${year}년(${date})으로 넘깁니다.\n${latestYear}년 총자산 현황 행은 그대로 남습니다. 계속할까요?`)) {
+      const el = document.getElementById('globalFinanceDate');
+      const prev = data.entries.map(e => e.date).filter(Boolean).sort().reverse()[0];
+      if (el && prev) el.value = prev.substring(0, 10);
+      return;
+    }
+    fromYear = latestYear;
+  }
   // yearFilter 숨겨져 있지만 값은 유지
+  refreshYearOptions(year);
   const yearFilter = document.getElementById('yearFilter');
   if (yearFilter) yearFilter.value = year;
-  // 같은 연도 항목들 날짜 일괄 변경
-  const data = loadData();
+  // 같은 연도(또는 넘기는 연도) 항목들 날짜 일괄 변경
   let changed = false;
   data.entries = data.entries.map(e => {
-    if (e.date && e.date.substring(0,4) === year) {
+    if (e.date && e.date.substring(0,4) === fromYear) {
       changed = true;
       return { ...e, date: date };
     }
@@ -1115,6 +1153,7 @@ function onGlobalFinanceDateChange(date) {
 function onGlobalStockDateChange(date) {
   if (!date) return;
   if (_demoMode) return; // 데모 모드에서는 저장 안 함
+  if (!serverReady('stocks')) return;
   localStorage.setItem('stockDate', date);
   db.ref('stockDate').set(date).catch(() => {});
 }
@@ -1169,14 +1208,20 @@ function watchServer() {
   db.ref('finance').on('value', snap => {
     try {
       const fin = normalizeFinance(snap.val());
+      _serverLoaded.finance = true;
       if (_demoMode) { _realDataBackup = fin; return; }
       _financeData = fin;
+      // PC·다른 기기가 항목 날짜를 바꿨으면(새해 넘김 등) 기준일 칸도 따라간다 — 옛 연도로 계산하지 않게
+      const fd = document.getElementById('globalFinanceDate');
+      const latest = fin.entries.map(e => e.date).filter(Boolean).sort().reverse()[0];
+      if (fd && latest && fd !== document.activeElement) fd.value = latest.substring(0, 10);
       renderFinanceViews();
     } catch (e) { console.warn('finance 갱신 실패:', e.message); }
   });
   db.ref('stocks').on('value', snap => {
     try {
       const stocks = ensureArray(snap.val()).filter(Boolean);
+      _serverLoaded.stocks = true;
       if (_demoMode) { _realStockBackup = stocks; return; }
       _stockData = stocks;
       renderStockViews();
@@ -1294,8 +1339,25 @@ function loadData() {
   return _financeData;
 }
 
+// 서버에서 한 번이라도 읽기 전에는 쓰지 않는다 (2026-10-12, 점검 #3).
+// 읽기가 실패하거나 아직 오는 중일 때 저장하면 빈(또는 이 기기의 옛) 사본이 서버 전체를 갈아치웠다.
+// 시작 때 get()이 성공하거나, 구독(on 'value')으로 서버 값이 한 번 오면 풀린다.
+const _serverLoaded = { finance: false, stocks: false };
+let _blockWarned = false;
+function serverReady(path) {
+  if (_serverLoaded[path]) return true;
+  const s = document.getElementById('sync-status');
+  if (s) { s.textContent = '⏳ 서버에서 불러오는 중 — 저장 안 됨'; s.style.color = '#d97706'; }
+  if (!_blockWarned) {
+    _blockWarned = true;
+    alert('서버에서 데이터를 아직 받지 못해 저장하지 않았습니다.\n연결되면 서버 값으로 다시 그려지니, 그다음에 다시 입력해 주세요.');
+  }
+  return false;
+}
+
 function saveData(data) {
   if (_demoMode) return; // 데모 모드에서는 저장 안 함
+  if (!serverReady('finance')) return;
   _financeData = data;
   db.ref('finance').set(data).then(() => {
     const s = document.getElementById('sync-status');
@@ -1436,6 +1498,7 @@ function catOptions(selected) {
 
 function renderEntryTable() {
   const data = loadData();
+  refreshYearOptions();
   const filter = document.getElementById('yearFilter').value;
   let entries = [...data.entries];
   if (filter !== 'all') entries = entries.filter(e => e.date.startsWith(filter));
@@ -2009,6 +2072,12 @@ function recalculate() {
   const displayDate = globalDate.replace(/-/g, '.');
   const year = parseInt(globalDate.substring(0, 4));
 
+  // 그 연도에 항목이 하나도 없으면 0원 행이 생긴다 — 만들지 않고 알린다 (2026-10-12, 점검 #12)
+  if (!data.entries.some(e => (e.date || '').startsWith(year + '-'))) {
+    alert(`${year}년 항목이 없어 계산하지 않았습니다.\n기준일을 다시 골라 항목을 ${year}년으로 넘긴 뒤 계산하세요.`);
+    return;
+  }
+
   const calc = calcYearSummary(data.entries, year);
   const snapshot = {
     id: globalDate,
@@ -2131,6 +2200,7 @@ function loadStockData() {
 
 function saveStockData(stocks) {
   if (_demoMode) return; // 데모 모드에서는 저장 안 함
+  if (!serverReady('stocks')) return;
   _stockData = stocks;
   db.ref('stocks').set(stocks).catch(() => {
     localStorage.setItem(STOCK_KEY, JSON.stringify(stocks));
