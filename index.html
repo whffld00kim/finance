@@ -1289,11 +1289,14 @@ function fmtChange(v) {
 
 function fmtUk(v) {
   const n = Math.round(v);
-  const uk = Math.floor(n / 10000);
-  const man = n % 10000;
-  if (uk > 0 && man > 0) return `${uk.toLocaleString('ko-KR')}억${man.toLocaleString('ko-KR')}만`;
-  if (uk > 0) return `${uk.toLocaleString('ko-KR')}억`;
-  return `${man.toLocaleString('ko-KR')}만`;
+  // 부호를 떼고 계산한 뒤 붙인다 — 종전엔 -15000(만)이 "-5,000만"으로 나왔다 (2026-10-12)
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  const uk = Math.floor(abs / 10000);
+  const man = abs % 10000;
+  if (uk > 0 && man > 0) return `${sign}${uk.toLocaleString('ko-KR')}억${man.toLocaleString('ko-KR')}만`;
+  if (uk > 0) return `${sign}${uk.toLocaleString('ko-KR')}억`;
+  return `${sign}${man.toLocaleString('ko-KR')}만`;
 }
 
 function fmtWon(v) {
@@ -1376,7 +1379,7 @@ function renderEntryTable() {
 
       // Subtotal row
       const catTotal = cEntries.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-      html += `<tr style="font-weight:600;background:#f8fafc;" class="subtotal-row">
+      html += `<tr style="font-weight:600;background:#f8fafc;" class="subtotal-row" data-key="${escHtml(y + '|' + cat)}">
         <td colspan="3" class="text-center"><small>${catBadge(cat)} 소계</small></td>
         <td class="text-end text-primary">${catTotal.toLocaleString('ko-KR')}</td>
         <td class="text-end text-primary">${(catTotal/10000).toLocaleString('ko-KR',{maximumFractionDigits:1})}</td>
@@ -1395,7 +1398,8 @@ function updateField(id, field, value) {
   const entry = data.entries.find(e => e.id === id);
   if (!entry) return;
   if (field === 'amount') entry[field] = parseFloat(value) || 0;
-  else entry[field] = value;
+  // 분류·항목·소유자는 앞뒤 공백을 뗀다 — "유동자산 "처럼 저장되면 어느 합계에도 안 들어가 순자산에서 조용히 빠졌다 (2026-10-12)
+  else entry[field] = typeof value === 'string' ? value.trim() : value;
   saveData(data);
   // category change: grouping has changed, full re-render needed
   if (field === 'category') {
@@ -1428,32 +1432,14 @@ function refreshSubtotals(allEntries) {
     groups[key] = (groups[key] || 0) + (parseFloat(e.amount) || 0);
   });
 
-  // Update subtotal rows in DOM (they have class subtotal-row)
-  // Each subtotal row follows all data rows of its category group
-  // We identify them by rebuilding amounts from live input values
-  const tbody = document.getElementById('entryTbody');
-  const subtotalRows = tbody.querySelectorAll('.subtotal-row');
-  subtotalRows.forEach(row => {
-    // Walk backwards to find the category badge text
-    const badge = row.querySelector('.badge-category');
-    if (!badge) return;
-    const cat = badge.textContent.replace(' 소계','').trim();
-
-    // Sum amounts from live inputs for this category (read from DOM)
-    let total = 0;
-    let sibling = row.previousElementSibling;
-    while (sibling && !sibling.classList.contains('subtotal-row')) {
-      const amtInput = sibling.querySelector('input[type="number"]');
-      const catSel = sibling.querySelector('select.cell-select');
-      if (amtInput && catSel && catSel.value === cat) {
-        total += parseFloat(amtInput.value) || 0;
-      }
-      sibling = sibling.previousElementSibling;
-    }
-
+  // 소계 행은 data-key(연도|분류)로 찾는다. 칸은 [소계 라벨, 원, 만원, 삭제] 순이라 1·2번째가 금액이다.
+  // 종전엔 존재하지 않는 select.cell-select를 찾고 cells[4]·[5]에 써서 아무것도 바뀌지 않았다 —
+  // 금액을 고쳐도 소계가 그대로였다 (2026-10-12)
+  document.querySelectorAll('#entryTbody .subtotal-row').forEach(row => {
+    const total = groups[row.dataset.key] || 0;
     const cells = row.querySelectorAll('td');
-    if (cells[4]) cells[4].textContent = total.toLocaleString('ko-KR');
-    if (cells[5]) cells[5].textContent = (total/10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 });
+    if (cells[1]) cells[1].textContent = total.toLocaleString('ko-KR');
+    if (cells[2]) cells[2].textContent = (total/10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 });
   });
 }
 
@@ -1592,6 +1578,10 @@ function renderCharts() {
 
   // Destroy old charts
   [trendChart, pieChart, categoryChart, barChart].forEach(c => { if (c) c.destroy(); });
+  trendChart = pieChart = categoryChart = barChart = null;
+  // 스냅샷이 없거나 전부 숨겼으면 그릴 것이 없다 — 종전엔 latest.부동산에서 TypeError가 나
+  // 뒤따르는 updateMetricCards까지 건너뛰었다 (2026-10-12)
+  if (!rows.length) return;
 
   // Common label style factory (per-dataset, with individual alignment)
   function labelStyle(align, anchor, extraColor) {
@@ -1752,7 +1742,11 @@ function renderCharts() {
 function updateMetricCards() {
   const data = loadData();
   const rows = getAllYearData(data.entries);
-  if (rows.length === 0) return;
+  if (rows.length === 0) {
+    // 행이 없으면 옛 숫자를 남기지 않고 처음 상태('-')로 (2026-10-12)
+    ['m-total', 'm-avail', 'm-debt', 'm-net'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '-'; });
+    return;
+  }
   const latest = rows[rows.length - 1];
   const prev = rows.length > 1 ? rows[rows.length - 2] : null;
 
@@ -1945,9 +1939,11 @@ function recalculate() {
 // ENTRY CRUD
 // =====================================================
 let addModal;
+let _entrySaved = false;   // 저장 버튼 더블탭 방지 — 모달을 다시 열 때 풀린다 (2026-10-12)
 function showAddModal() {
   if (!isAdmin) { requireAdmin(showAddModal); return; }
   editingId = null;
+  _entrySaved = false;
   document.getElementById('modalTitle').textContent = '항목 추가';
   document.getElementById('inp-category').value = '부동산';
   document.getElementById('inp-item').value = '';
@@ -1982,6 +1978,8 @@ function saveEntry() {
     alert('날짜, 분류, 적립금은 필수 입력 항목입니다.');
     return;
   }
+  if (_entrySaved) return;   // 모달이 닫히는 동안 두 번째 탭이 같은 항목을 또 넣었다
+  _entrySaved = true;
 
   const data = loadData();
   if (editingId) {
@@ -2086,6 +2084,9 @@ function importStockSummaryToFinance() {
       .filter(([key]) => key.startsWith(cat + '|'))
       .forEach(([key, total]) => {
         const owner = key.split('|')[1];
+        // 같은 날짜·분류·소유자의 "(주식)" 항목이 이미 있으면 갈아끼운다 — 두 번 누르면 연도 합계가 두 배로 잡혔다 (2026-10-12)
+        data.entries = data.entries.filter(e =>
+          !(e.date === date && e.category === cat && e.item === cat + ' (주식)' && (e.owner || '') === owner));
         data.entries.push({
           id: 'stock_' + cat + '_' + owner + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
           date: date,
@@ -2111,6 +2112,7 @@ function importStockSummaryToFinance() {
 
 function deleteStockEntry(id) {
   if (!isAdmin) { requireAdmin(() => deleteStockEntry(id)); return; }
+  if (!confirm('이 항목을 삭제하시겠습니까?')) return;   // 자산 입력 표와 같게 — 오터치 한 번에 행이 사라졌다 (2026-10-12)
   const stocks = loadStockData().filter(s => s.id !== id);
   saveStockData(stocks);
   renderStockTab();
@@ -2410,8 +2412,9 @@ function pfBucket(s) {
 }
 
 function pfFilter(owner = _pfOwner) {
+  // 소유자가 빈 종목은 명의 버튼에 '기타'로 나오므로 여기서도 같은 이름으로 잡는다 (2026-10-12)
   return loadStockData().filter(s => s.category === '연금' && pfBucket(s)
-    && (owner === '전체' || (s.owner || '') === owner));
+    && (owner === '전체' || (s.owner || '기타') === owner));
 }
 
 function pfAmt(s) { return (parseFloat(s.shares) || 0) * (parseFloat(s.price) || 0); }
@@ -2519,6 +2522,18 @@ function calcPortfolio() {
     const cStocks = ag.list
       .filter(s => (s.country || '기타') === country)
       .sort((a, b) => PF_BUCKETS.indexOf(pfBucket(a)) - PF_BUCKETS.indexOf(pfBucket(b)));
+    if (!cStocks.length) {
+      // 이 명의가 보유하지 않은 국가(명의별 탭에서 생김)에 목표를 주면 행이 아예 없어 목표·차이가 안 보였다 (2026-10-12)
+      rows += `<tr>
+        <td style="font-weight:600">${escHtml(country)}</td>
+        <td>-</td><td>-</td><td>-</td><td>-</td>
+        <td style="text-align:center;color:#888">-</td>
+        <td style="text-align:right">-</td><td style="text-align:right">-</td><td style="text-align:right">-</td>
+        <td style="text-align:right">${Math.round(targetAmt).toLocaleString('ko-KR')}</td>
+        <td style="text-align:right;color:${diff>=0?'#16a34a':'#dc2626'}">${diff>=0?'+':''}${Math.round(diff).toLocaleString('ko-KR')}</td>
+      </tr>`;
+      return;
+    }
     // 매매는 **수량이 가장 많은 행 하나에 몰아준다** (2026-09-05). 종전엔 차이를 모든 행에
     // 금액 비례로 쪼개서 국가마다 8~10건씩 나왔다 — 실제로 그렇게 주문하는 사람은 없다.
     //   · 후보는 수량을 아는 행만 (shares > 1). 예수금·MMF·펀드처럼 1주로 넣은 자리표시 행은 뺀다
