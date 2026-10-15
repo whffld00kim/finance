@@ -3,7 +3,7 @@
 // 라이브러리(CDN)는 설치 때 받은 사본을 그대로 쓴다 (2026-10-12 — 아래 fetch 핸들러 주석).
 // ⚠ index.html을 고치면 CACHE 버전을 올린다. 새 버전이 설치되면 페이지가 스스로 새로고침해 바로 새 화면이 뜬다.
 // ⚠ index.html이 부르는 파일을 바꾸면 OWN·CDN 목록도 같이 고친다 (한 글자라도 다르면 미리 받아 둔 의미가 없다).
-const CACHE = 'finance-v20261012b';
+const CACHE = 'finance-v20261015';
 
 // 이 앱의 파일
 const OWN = [
