@@ -161,6 +161,10 @@ html, body { overscroll-behavior-y: none; }
   body.viewer-mode .cell-select { pointer-events: none; cursor: default; color: inherit; }
   body.viewer-mode .delete-btn { display: none; }
   .lock-btn { font-size: 0.78rem; padding: 2px 10px; border-radius: 20px; font-weight: 600; transition: all 0.2s; }
+  /* 상단 바 도구 묶음 (2026-10-21): 폰(411)에서 칸마다 글자가 두 줄로 쪼개졌다(「잠김」「로그아웃」「김민성」「날짜」).
+     글자는 한 줄로 두고, 자리가 모자라면 칸째 다음 줄로 내린다 — 넓은 화면은 한 줄 그대로 */
+  .nav-tools { flex-wrap: wrap; }
+  .nav-tools > * { white-space: nowrap; }
   /* 총자산 현황: 값 아래 증감 작은 글씨 — 폴드 펼친 화면에서만 보인다 (아래 fold 블록) */
   .sum-sub { display: none; }
   /* 총자산 현황 행 숨기기 */
@@ -215,8 +219,9 @@ html, body { overscroll-behavior-y: none; }
        높이는 min-height라 내용이 많으면(자산 입력 표, 매매 계획) 그대로 아래로 늘어난다
      - 자산 분석 그래프 넷은 같은 높이의 2×2
      - 글자·탭 버튼을 조금 키운다 (팔 길이에서 보는 화면)
-     이 블록은 <style> 맨 끝에 둔다 */
-  @media (min-width: 900px) and (orientation: landscape) {
+     이 블록은 <style> 맨 끝에 둔다
+     높이 500 미만(폰 가로, 960×411 등)은 뺀다 — 폭만 보고 태블릿 배치가 걸려 글자만 커졌다 (2026-10-21) */
+  @media (min-width: 900px) and (orientation: landscape) and (min-height: 500px) {
     body {
       font-size: 0.95rem;
       display: flex;
@@ -353,7 +358,8 @@ html, body { overscroll-behavior-y: none; }
     .stock-table-wrap { max-height: max(380px, calc(100dvh - 360px)); }
     /* 표가 내용 폭에서 멈춰 오른쪽이 비었다 (2026-10-09 사용자 캡처) — 칸을 늘려 끝까지 채운다. 내용이 더 넓으면 종전대로 가로 스크롤 */
     #stockTable { width: 100%; font-size: 0.76rem; }
-    #stockTable th, #stockTable td { padding: 0.3rem 0.25rem; }
+    /* 칸 좌우 여백 .25 → .2rem (2026-10-21): 총금액 13자리(10억대) 종목이 있으면 표가 8~11px 넘쳐 가로로 밀렸다 */
+    #stockTable th, #stockTable td { padding: 0.3rem 0.2rem; }
     #stockTable .cell-input { font-size: 0.76rem; }
     #stockTable .sort-arrow { width: 8px; }
     #stockTable .cw .sz { display: block; overflow: hidden; }
@@ -394,7 +400,7 @@ html, body { overscroll-behavior-y: none; }
 <nav class="navbar navbar-dark" style="background:var(--primary);">
   <div class="container-fluid flex-wrap gap-2">
     <span class="navbar-brand">📊 재무현황 관리 시스템</span>
-    <div class="d-flex align-items-center gap-2 ms-auto">
+    <div class="nav-tools d-flex align-items-center gap-2 ms-auto">
       <span style="font-size:0.78rem;opacity:0.85;" id="sync-status" class="text-white">⏳ 서버 연결 중...</span>
       <button onclick="exportData()" class="btn btn-sm btn-outline-light py-0 admin-only" style="font-size:0.75rem;" title="데이터를 JSON 파일로 저장">💾 백업</button>
       <label class="btn btn-sm btn-outline-light py-0 mb-0 admin-only" style="font-size:0.75rem;cursor:pointer;" title="JSON 파일을 불러와 서버에 저장">
